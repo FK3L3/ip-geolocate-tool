@@ -2,6 +2,15 @@
 
 Script: `ip_geolocate.py`
 
+## Tools Used
+
+- `Python 3` runtime (CLI script execution)
+- Python standard library modules:
+  `argparse`, `csv`, `ipaddress`, `json`, `sys`, `time`,
+  `dataclasses`, `pathlib`, `typing`, `urllib.request`, `urllib.error`
+- External geolocation API: `https://ipwho.is/{ip}`
+- Command-line usage examples use standard shell tools like `cat` for stdin piping
+
 ## Quick start
 
 ```bash
