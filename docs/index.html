@@ -218,6 +218,16 @@ body {
   transition: all .25s; z-index: 9999; white-space: nowrap;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.card-domain { font-size: .7rem; color: var(--muted); font-family: var(--mono); margin-bottom: 2px; }
+.ping-wrap { display: flex; flex-direction: column; gap: 4px; }
+.ping-status-row { display: flex; align-items: center; gap: 5px; font-size: .78rem; font-family: var(--mono); }
+.ping-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.ping-dot.ok  { background: var(--ok); }
+.ping-dot.err { background: var(--err); }
+.ping-dot.unk { background: var(--muted); }
+@keyframes ping-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.ping-dot.pulsing { animation: ping-pulse 1s ease-in-out infinite; background: var(--accent); }
+.ping-rtt { color: var(--muted); font-size: .72rem; }
 </style>
 </head>
 <body>
@@ -233,8 +243,8 @@ body {
 <div class="wrap">
   <div class="search-card">
     <div>
-      <div class="field-label">IP Addresses &mdash; one per line</div>
-      <textarea id="ip-input" class="ip-input" placeholder="8.8.8.8&#10;1.1.1.1&#10;9.9.9.9" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"></textarea>
+      <div class="field-label">IPs or Domains &mdash; one per line</div>
+      <textarea id="ip-input" class="ip-input" placeholder="8.8.8.8&#10;1.1.1.1&#10;google.com" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"></textarea>
     </div>
     <div class="api-section">
       <div class="field-label" style="margin-bottom:0">AbuseIPDB (optional)</div>
@@ -437,6 +447,67 @@ function expandIPv6(ip) {
   } catch(e) { return null; }
 }
 
+function isDomain(s) {
+  if (isValidIP(s)) return false;
+  return /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/.test(s);
+}
+
+async function resolveDomain(domain) {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=A`, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!res.ok) return [];
+    const d = await res.json();
+    return (d.Answer || []).filter(r => r.type === 1).map(r => r.data);
+  } catch(e) { return []; }
+}
+
+async function resolveEntries(entries) {
+  const items = [], seen = new Set();
+  for (const e of entries) {
+    if (isValidIP(e)) {
+      if (!seen.has(e)) { seen.add(e); items.push({ ip: e, domain: null }); }
+    } else if (isDomain(e)) {
+      const ips = await resolveDomain(e);
+      if (!ips.length) {
+        items.push({ ip: e, domain: e, resolveError: true });
+      } else {
+        for (const ip of ips) {
+          if (!seen.has(ip)) { seen.add(ip); items.push({ ip, domain: e }); }
+        }
+      }
+    }
+  }
+  return items;
+}
+
+async function pingIP(ip) {
+  // Try Flask backend first (TCP connect — works locally)
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(`/api/ping?ip=${encodeURIComponent(ip)}`, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (res.ok) { const d = await res.json(); if (typeof d.alive === 'boolean') return { alive: d.alive }; }
+  } catch(_) {}
+  // Fallback: HackerTarget ICMP ping API (CORS-enabled, free tier)
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 15000);
+    const res = await fetch(`https://api.hackertarget.com/ping/?q=${encodeURIComponent(ip)}`, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!res.ok) return { alive: null };
+    const text = await res.text();
+    if (/error|API count/i.test(text)) return { alive: null };
+    const m = text.match(/rtt[^=]+=\s*([\d.]+)\/([\d.]+)\/([\d.]+)/);
+    if (m) return { alive: true, rtt: parseFloat(m[2]) };
+    if (/100%\s*packet.loss/i.test(text)) return { alive: false };
+    return { alive: null };
+  } catch(e) { return { alive: null }; }
+}
+
 function extractAbuseData(d) {
   return {
     abuse_score: d.data.abuseConfidenceScore,
@@ -491,11 +562,12 @@ async function fetchAbuse(ip, apiKey) {
   }
 }
 
-async function lookupIP(ip, abuseKey) {
+async function lookupIP(ip, abuseKey, fromDomain = null) {
   const [geo, rdns] = await Promise.all([fetchGeo(ip), fetchRDNS(ip)]);
-  if (!geo.success) return geo;
+  if (!geo.success) return { ...geo, from_domain: fromDomain };
   geo.rdns = rdns;
   geo.is_datacenter = geo.is_hosting;
+  geo.from_domain = fromDomain;
   if (abuseKey) {
     const abuse = await fetchAbuse(ip, abuseKey);
     if (abuse && !abuse._err) {
@@ -550,12 +622,16 @@ function makeCard(r, idx) {
   d.innerHTML = `
     <div class="card-top">
       <div class="card-ip-row">
+        ${r.from_domain ? `<div class="card-domain">&#8627; ${esc(r.from_domain)}</div>` : ''}
         <div class="card-ip">${esc(r.ip)}</div>
         <div class="badges">${badges.join('')}</div>
       </div>
       <div class="card-right">
         ${flag ? `<div class="card-flag">${flag}</div>` : ''}
-        <div class="card-actions"><button class="btn-sm copy-btn" title="Copy to clipboard">Copy</button></div>
+        <div class="card-actions">
+          <button class="btn-sm ping-btn" title="Check if host is reachable">Ping</button>
+          <button class="btn-sm copy-btn" title="Copy to clipboard">Copy</button>
+        </div>
       </div>
     </div>
     <div>
@@ -571,14 +647,40 @@ function makeCard(r, idx) {
       ${r.asn_full ? `<div class="detail full"><div class="detail-label">ASN Name</div><div class="detail-val muted">${esc(r.asn_full)}</div></div>` : ''}
       ${abuseHtml}
       ${r.abuse_usage ? `<div class="detail full"><div class="detail-label">Usage Type</div><div class="detail-val muted">${esc(r.abuse_usage)}</div></div>` : ''}
+    </div>
+    <div class="ping-wrap" style="display:none">
+      <div class="divider"></div>
+      <div class="detail full">
+        <div class="detail-label">Host Status</div>
+        <div class="ping-status-row"></div>
+      </div>
     </div>`;
 
+  const pingBtn = d.querySelector('.ping-btn');
+  const pingWrap = d.querySelector('.ping-wrap');
+  const pingRow = d.querySelector('.ping-status-row');
+  pingBtn.addEventListener('click', async () => {
+    pingBtn.disabled = true; pingBtn.textContent = '...';
+    pingWrap.style.display = '';
+    pingRow.innerHTML = '<span class="ping-dot pulsing"></span> Pinging…';
+    const res = await pingIP(r.ip);
+    if (res.alive === true) {
+      const rtt = res.rtt != null ? ` <span class="ping-rtt">· ${res.rtt.toFixed(1)} ms avg</span>` : '';
+      pingRow.innerHTML = `<span class="ping-dot ok"></span><span style="color:var(--ok)">Online</span>${rtt}`;
+    } else if (res.alive === false) {
+      pingRow.innerHTML = `<span class="ping-dot err"></span><span style="color:var(--err)">Offline</span>`;
+    } else {
+      pingRow.innerHTML = `<span class="ping-dot unk"></span><span style="color:var(--muted)">Unknown</span>`;
+    }
+    pingBtn.textContent = '↺'; pingBtn.disabled = false;
+  });
   d.querySelector('.copy-btn').addEventListener('click', () => copyCard(r));
   return d;
 }
 
 function copyCard(r) {
   const lines = [
+    r.from_domain ? `Domain: ${r.from_domain}` : null,
     `IP: ${r.ip}`,
     r.country ? `Location: ${[r.city, r.region, r.country].filter(Boolean).join(', ')}` : null,
     r.asn_full ? `ASN: ${r.asn_full}` : null,
@@ -602,9 +704,9 @@ let allResults = [];
 
 function exportCSV() {
   if (!allResults.length) return;
-  const headers = ['IP','Country','Region','City','Latitude','Longitude','ISP','Org','ASN','rDNS','Proxy','Datacenter','Mobile','Abuse Score','Abuse Reports','Usage Type'];
+  const headers = ['Domain','IP','Country','Region','City','Latitude','Longitude','ISP','Org','ASN','rDNS','Proxy','Datacenter','Mobile','Abuse Score','Abuse Reports','Usage Type'];
   const rows = allResults.map(r => [
-    r.ip, r.country||'', r.region||'', r.city||'',
+    r.from_domain||'', r.ip, r.country||'', r.region||'', r.city||'',
     r.latitude||'', r.longitude||'', r.isp||'', r.org||'', r.asn_full||'',
     r.rdns||'',
     r.is_proxy ? 'Yes' : 'No',
@@ -650,22 +752,33 @@ function setProgress(done, total) {
   progressLabel.textContent = `${done} / ${total} IPs processed`;
 }
 
-async function doLookup(ips) {
-  if (!ips.length) return;
+async function doLookup(entries) {
+  if (!entries.length) return;
   const abuseKey = document.getElementById('abuse-key').value.trim();
   setLoading(true); hideAlert();
   grid.innerHTML = ''; resultsSection.style.display = 'none'; mapWrap.style.display = 'none';
   allResults = [];
-  if (ips.length > 1) { progressWrap.style.display = 'block'; setProgress(0, ips.length); }
+
+  // Resolve domains → IPs first
+  lookupLbl.textContent = 'Resolving…';
+  const items = await resolveEntries(entries);
+  if (!items.length) { setLoading(false); showAlert('No valid IPs or resolvable domains found.'); return; }
+
+  lookupLbl.textContent = 'Looking up…';
+  if (items.length > 1) { progressWrap.style.display = 'block'; setProgress(0, items.length); }
   try {
     let done = 0;
     const CHUNK = 3;
-    for (let i = 0; i < ips.length; i += CHUNK) {
-      const chunk = ips.slice(i, i + CHUNK);
-      const chunkResults = await Promise.all(chunk.map(ip => lookupIP(ip, abuseKey)));
+    for (let i = 0; i < items.length; i += CHUNK) {
+      const chunk = items.slice(i, i + CHUNK);
+      const chunkResults = await Promise.all(chunk.map(item =>
+        item.resolveError
+          ? Promise.resolve({ ip: item.ip, success: false, error: 'Could not resolve: ' + item.ip, from_domain: item.ip })
+          : lookupIP(item.ip, abuseKey, item.domain)
+      ));
       chunkResults.forEach(r => {
         allResults.push(r); done++;
-        setProgress(done, ips.length);
+        setProgress(done, items.length);
         grid.appendChild(makeCard(r, allResults.length - 1));
       });
       resultsSection.style.display = 'block';
@@ -692,7 +805,7 @@ async function doLookup(ips) {
 
 lookupBtn.addEventListener('click', () => {
   const raw = ipInput.value.trim();
-  if (!raw) { showAlert('Enter at least one IP address.'); return; }
+  if (!raw) { showAlert('Enter at least one IP address or domain name.'); return; }
   doLookup([...new Set(raw.split(/[\n,\s]+/).map(s => s.trim()).filter(Boolean))]);
 });
 
@@ -714,12 +827,12 @@ pasteBtn.addEventListener('click', async () => {
   try {
     const text = await navigator.clipboard.readText();
     if (text) {
-      const ips = [...new Set(text.split(/[\n,\s]+/).map(s => s.trim()).filter(s => isValidIP(s)))];
-      if (ips.length) {
-        ipInput.value = ips.join('\n');
-        showToast(`${ips.length} IP${ips.length !== 1 ? 's' : ''} pasted`);
+      const entries = [...new Set(text.split(/[\n,\s]+/).map(s => s.trim()).filter(s => isValidIP(s) || isDomain(s)))];
+      if (entries.length) {
+        ipInput.value = entries.join('\n');
+        showToast(`${entries.length} entr${entries.length !== 1 ? 'ies' : 'y'} pasted`);
       } else {
-        showToast('No valid IPs found in clipboard');
+        showToast('No valid IPs or domains found in clipboard');
       }
     }
   } catch(e) { showAlert('Clipboard access denied. Paste manually.'); }

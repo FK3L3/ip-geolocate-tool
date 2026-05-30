@@ -56,6 +56,23 @@ def lookup():
     return jsonify({"results": results})
 
 
+@app.get("/api/ping")
+def ping_proxy():
+    import socket
+    ip = request.args.get("ip", "").strip()
+    if not is_valid_ip(ip):
+        return jsonify({"error": "Invalid IP address"}), 400
+    alive = False
+    for port in (80, 443, 22, 8080):
+        try:
+            with socket.create_connection((ip, port), timeout=2):
+                alive = True
+                break
+        except Exception:
+            pass
+    return jsonify({"ip": ip, "alive": alive})
+
+
 @app.get("/api/abuse")
 def abuse_proxy():
     ip = request.args.get("ip", "").strip()
