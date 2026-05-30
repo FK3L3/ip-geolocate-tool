@@ -244,7 +244,12 @@ body {
         <button class="btn-sm" id="clear-key-btn" title="Remove saved key" style="display:none">Clear</button>
       </div>
       <div class="api-hint" id="api-hint-text">Free key at <a href="https://www.abuseipdb.com/register" target="_blank" rel="noopener">abuseipdb.com</a> &mdash; 1,000 lookups/day. Stored locally in your browser only, never sent anywhere except AbuseIPDB.</div>
-      <div id="cors-warn" class="api-hint" style="display:none;color:var(--warn)">&#9888; AbuseIPDB is blocked by browser CORS on this host &mdash; run <code style="font-family:var(--mono);font-size:.72rem">python app.py</code> and open <strong>localhost:5000</strong> for it to work.</div>
+      <div id="cors-warn" class="api-hint" style="display:none;color:var(--warn)">&#9888; AbuseIPDB is blocked by browser CORS on this host. Deploy <a href="worker.js" target="_blank" style="color:var(--warn);text-decoration:underline">worker.js</a> to <a href="https://dash.cloudflare.com/?to=/:account/workers" target="_blank" rel="noopener" style="color:var(--warn);text-decoration:underline">Cloudflare Workers</a> (free) and paste the URL below &mdash; or run <code style="font-family:var(--mono);font-size:.72rem">python app.py</code> locally.</div>
+      <div id="proxy-row" class="api-row" style="display:none">
+        <input type="url" id="proxy-url" class="api-input" placeholder="https://your-worker.workers.dev  (Cloudflare Worker proxy URL)" autocomplete="off" spellcheck="false">
+        <button class="btn-sm" id="save-proxy-btn">Save</button>
+        <button class="btn-sm" id="clear-proxy-btn" style="display:none">Clear</button>
+      </div>
     </div>
     <div class="actions">
       <button class="btn btn-primary" id="lookup-btn"><span id="lookup-lbl">Locate IPs</span></button>
@@ -444,23 +449,32 @@ function extractAbuseData(d) {
   };
 }
 
-async function fetchAbuse(ip, apiKey) {
-  if (!apiKey) return null;
-  // Try backend proxy first — server-to-server request bypasses browser CORS restrictions
+async function proxyFetch(base, ip, apiKey) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 8000);
-    const res = await fetch(`/api/abuse?ip=${encodeURIComponent(ip)}`, {
+    const res = await fetch(`${base}?ip=${encodeURIComponent(ip)}`, {
       headers: { 'X-Abuse-Key': apiKey, 'Accept': 'application/json' },
       signal: ctrl.signal,
     });
     clearTimeout(t);
-    if (res.ok) {
-      const d = await res.json();
-      if (d.data) return extractAbuseData(d);
-    }
-  } catch (_) { /* backend unavailable, fall through */ }
-  // Direct browser fetch — blocked by CORS on AbuseIPDB; signals error so UI can warn the user
+    if (res.ok) { const d = await res.json(); if (d.data) return extractAbuseData(d); }
+  } catch (_) { clearTimeout(t); }
+  return null;
+}
+
+async function fetchAbuse(ip, apiKey) {
+  if (!apiKey) return null;
+  // 1. User-configured proxy (Cloudflare Worker or similar)
+  const customProxy = localStorage.getItem('abuse_proxy_url');
+  if (customProxy) {
+    const r = await proxyFetch(customProxy, ip, apiKey);
+    if (r) return r;
+  }
+  // 2. Local Flask backend proxy
+  const r = await proxyFetch('/api/abuse', ip, apiKey);
+  if (r) return r;
+  // 3. Direct browser fetch — blocked by CORS on static hosts
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 8000);
@@ -762,8 +776,46 @@ abuseKeyInput.addEventListener('input', () => {
 
 loadSavedKey();
 
-if (!/^(localhost|127\.|0\.0\.0\.)/.test(location.hostname) && location.protocol !== 'file:') {
+const proxyUrlInput = document.getElementById('proxy-url');
+const saveProxyBtn  = document.getElementById('save-proxy-btn');
+const clearProxyBtn = document.getElementById('clear-proxy-btn');
+
+function loadProxyUrl() {
+  const stored = localStorage.getItem('abuse_proxy_url');
+  if (stored) {
+    proxyUrlInput.value = stored;
+    saveProxyBtn.style.display = 'none';
+    clearProxyBtn.style.display = '';
+  }
+}
+
+saveProxyBtn.addEventListener('click', () => {
+  const val = proxyUrlInput.value.trim();
+  if (!val) { showToast('Paste a proxy URL first'); return; }
+  localStorage.setItem('abuse_proxy_url', val);
+  saveProxyBtn.style.display = 'none';
+  clearProxyBtn.style.display = '';
+  showToast('Proxy URL saved');
+});
+
+clearProxyBtn.addEventListener('click', () => {
+  localStorage.removeItem('abuse_proxy_url');
+  proxyUrlInput.value = '';
+  clearProxyBtn.style.display = 'none';
+  saveProxyBtn.style.display = '';
+  showToast('Proxy URL cleared');
+});
+
+proxyUrlInput.addEventListener('input', () => {
+  if (proxyUrlInput.value.trim() !== localStorage.getItem('abuse_proxy_url')) saveProxyBtn.style.display = '';
+});
+
+loadProxyUrl();
+
+const isStaticHost = !/^(localhost|127\.|0\.0\.0\.)/.test(location.hostname) && location.protocol !== 'file:';
+if (isStaticHost) {
   document.getElementById('cors-warn').style.display = '';
+  document.getElementById('proxy-row').style.display = '';
 }
 
 const saved = localStorage.getItem('theme') || 'dark';
