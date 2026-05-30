@@ -3,6 +3,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 
+import requests as _req
 from flask import Flask, jsonify, render_template, request
 
 from ip_geolocate import fetch_geo, is_valid_ip
@@ -53,6 +54,26 @@ def lookup():
         results = list(pool.map(_process, ips))
 
     return jsonify({"results": results})
+
+
+@app.get("/api/abuse")
+def abuse_proxy():
+    ip = request.args.get("ip", "").strip()
+    key = request.headers.get("X-Abuse-Key", "").strip()
+    if not is_valid_ip(ip):
+        return jsonify({"error": "Invalid IP address"}), 400
+    if not key:
+        return jsonify({"error": "No API key provided"}), 400
+    try:
+        r = _req.get(
+            "https://api.abuseipdb.com/api/v2/check",
+            params={"ipAddress": ip, "maxAgeInDays": 90},
+            headers={"Key": key, "Accept": "application/json"},
+            timeout=8,
+        )
+        return jsonify(r.json()), r.status_code
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 503
 
 
 if __name__ == "__main__":

@@ -431,42 +431,65 @@ function expandIPv6(ip) {
   } catch(e) { return null; }
 }
 
-async function fetchAbuse(ip, apiKey) {
-  if (!apiKey) return null;
-  try {
-    const res = await fetch(`https://api.abuseipdb.com/api/v2/check?ipAddress=${encodeURIComponent(ip)}&maxAgeInDays=90`, {
-      headers: { 'Key': apiKey, 'Accept': 'application/json' }
-    });
-    if (!res.ok) return null;
-    const d = await res.json();
-    if (d.data) {
-      return {
-        abuse_score: d.data.abuseConfidenceScore,
-        total_reports: d.data.totalReports,
-        last_reported: d.data.lastReportedAt,
-        is_whitelisted: d.data.isWhitelisted,
-        usage_type: d.data.usageType,
-        isp: d.data.isp,
-        domain: d.data.domain,
-      };
-    }
-    return null;
-  } catch(e) { return null; }
+function extractAbuseData(d) {
+  return {
+    abuse_score: d.data.abuseConfidenceScore,
+    total_reports: d.data.totalReports,
+    last_reported: d.data.lastReportedAt,
+    is_whitelisted: d.data.isWhitelisted,
+    usage_type: d.data.usageType,
+    isp: d.data.isp,
+    domain: d.data.domain,
+  };
 }
 
-async function lookupIP(ip) {
-  const abuseKey = document.getElementById('abuse-key').value.trim();
+async function fetchAbuse(ip, apiKey) {
+  if (!apiKey) return null;
+  // Try backend proxy first — server-to-server request bypasses browser CORS restrictions
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(`/api/abuse?ip=${encodeURIComponent(ip)}`, {
+      headers: { 'X-Abuse-Key': apiKey, 'Accept': 'application/json' },
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    if (res.ok) {
+      const d = await res.json();
+      if (d.data) return extractAbuseData(d);
+    }
+  } catch (_) { /* backend unavailable, fall through */ }
+  // Direct browser fetch — blocked by CORS on AbuseIPDB; signals error so UI can warn the user
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(
+      `https://api.abuseipdb.com/api/v2/check?ipAddress=${encodeURIComponent(ip)}&maxAgeInDays=90`,
+      { headers: { 'Key': apiKey, 'Accept': 'application/json' }, signal: ctrl.signal }
+    );
+    clearTimeout(t);
+    if (!res.ok) return { _err: `HTTP ${res.status}` };
+    const d = await res.json();
+    return d.data ? extractAbuseData(d) : null;
+  } catch (e) {
+    return { _err: e.name === 'AbortError' ? 'timeout' : 'cors' };
+  }
+}
+
+async function lookupIP(ip, abuseKey) {
   const [geo, rdns] = await Promise.all([fetchGeo(ip), fetchRDNS(ip)]);
   if (!geo.success) return geo;
   geo.rdns = rdns;
   geo.is_datacenter = geo.is_hosting;
   if (abuseKey) {
     const abuse = await fetchAbuse(ip, abuseKey);
-    if (abuse) {
+    if (abuse && !abuse._err) {
       geo.abuse_score = abuse.abuse_score;
       geo.abuse_reports = abuse.total_reports;
       geo.abuse_last = abuse.last_reported;
       geo.abuse_usage = abuse.usage_type;
+    } else if (abuse?._err) {
+      geo.abuse_error = true;
     }
   }
   return geo;
@@ -497,6 +520,8 @@ function makeCard(r, idx) {
   if (r.abuse_score != null) {
     const cls = r.abuse_score > 50 ? 'badge-err' : r.abuse_score > 20 ? 'badge-warn' : 'badge-ok';
     badges.push(`<span class="badge ${cls}">Abuse ${r.abuse_score}%</span>`);
+  } else if (r.abuse_error) {
+    badges.push('<span class="badge badge-info" title="AbuseIPDB lookup blocked by browser CORS — run via python app.py for backend proxy support">Abuse N/A</span>');
   }
   if (!badges.length) badges.push('<span class="badge badge-ok">Clean</span>');
 
@@ -551,11 +576,11 @@ function copyCard(r) {
   navigator.clipboard.writeText(lines.join('\n')).then(() => showToast('Copied to clipboard'));
 }
 
-function showToast(msg) {
+function showToast(msg, ms = 2000) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2000);
+  setTimeout(() => t.classList.remove('show'), ms);
 }
 
 let allResults = [];
@@ -612,6 +637,7 @@ function setProgress(done, total) {
 
 async function doLookup(ips) {
   if (!ips.length) return;
+  const abuseKey = document.getElementById('abuse-key').value.trim();
   setLoading(true); hideAlert();
   grid.innerHTML = ''; resultsSection.style.display = 'none'; mapWrap.style.display = 'none';
   allResults = [];
@@ -621,7 +647,7 @@ async function doLookup(ips) {
     const CHUNK = 3;
     for (let i = 0; i < ips.length; i += CHUNK) {
       const chunk = ips.slice(i, i + CHUNK);
-      const chunkResults = await Promise.all(chunk.map(lookupIP));
+      const chunkResults = await Promise.all(chunk.map(ip => lookupIP(ip, abuseKey)));
       chunkResults.forEach(r => {
         allResults.push(r); done++;
         setProgress(done, ips.length);
@@ -632,6 +658,9 @@ async function doLookup(ips) {
     progressWrap.style.display = 'none';
     const ok = allResults.filter(r => r.success).length;
     badge.textContent = `${ok} / ${allResults.length}`;
+    if (abuseKey && allResults.some(r => r.abuse_error)) {
+      showToast('AbuseIPDB blocked by browser CORS — run python app.py to enable the backend proxy.', 6000);
+    }
     const hasCoords = allResults.some(r => r.success && r.latitude && r.longitude);
     if (hasCoords) {
       mapWrap.style.display = 'block';
@@ -660,7 +689,7 @@ myipBtn.addEventListener('click', async () => {
   try {
     const res = await fetch('https://api.ipify.org?format=json');
     const data = await res.json();
-    if (data.ip) { ipInput.value = data.ip; doLookup([data.ip]); }
+    if (data.ip) { ipInput.value = data.ip; await doLookup([data.ip]); }
     else showAlert('Could not detect your IP.');
   } catch(e) { showAlert('Could not detect your IP.'); }
   finally { myipBtn.disabled = false; myipBtn.textContent = orig; }
