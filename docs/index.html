@@ -244,6 +244,7 @@ body {
         <button class="btn-sm" id="clear-key-btn" title="Remove saved key" style="display:none">Clear</button>
       </div>
       <div class="api-hint" id="api-hint-text">Free key at <a href="https://www.abuseipdb.com/register" target="_blank" rel="noopener">abuseipdb.com</a> &mdash; 1,000 lookups/day. Stored locally in your browser only, never sent anywhere except AbuseIPDB.</div>
+      <div id="cors-warn" class="api-hint" style="display:none;color:var(--warn)">&#9888; AbuseIPDB is blocked by browser CORS on this host &mdash; run <code style="font-family:var(--mono);font-size:.72rem">python app.py</code> and open <strong>localhost:5000</strong> for it to work.</div>
     </div>
     <div class="actions">
       <button class="btn btn-primary" id="lookup-btn"><span id="lookup-lbl">Locate IPs</span></button>
@@ -760,6 +761,10 @@ abuseKeyInput.addEventListener('input', () => {
 });
 
 loadSavedKey();
+
+if (!/^(localhost|127\.|0\.0\.0\.)/.test(location.hostname) && location.protocol !== 'file:') {
+  document.getElementById('cors-warn').style.display = '';
+}
 
 const saved = localStorage.getItem('theme') || 'dark';
 html.dataset.theme = saved;
