@@ -1,175 +1,279 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#070d1a" id="theme-color-meta">
-  <title>IP Geolocate</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:         #070d1a;
-      --surface:    #0e1828;
-      --card:       #111f35;
-      --border:     #1d3151;
-      --accent:     #3b82f6;
-      --accent-h:   #2563eb;
-      --accent-dim: rgba(59,130,246,.15);
-      --ok:         #10b981;
-      --ok-dim:     rgba(16,185,129,.12);
-      --err:        #ef4444;
-      --err-dim:    rgba(239,68,68,.12);
-      --text:       #e2e8f0;
-      --muted:      #6b85a3;
-      --dim:        #3d5578;
-      --shadow:     0 4px 24px rgba(0,0,0,.4);
-      --shadow-sm:  0 2px 8px rgba(0,0,0,.3);
-      --r:          16px;
-      --r-sm:       10px;
-      --mono:       'SF Mono','Cascadia Code','Fira Code',Consolas,Monaco,monospace;
-    }
-    [data-theme="light"] {
-      --bg:         #f0f4f8;
-      --surface:    #ffffff;
-      --card:       #ffffff;
-      --border:     #dde4ef;
-      --accent:     #2563eb;
-      --accent-h:   #1d4ed8;
-      --accent-dim: rgba(37,99,235,.10);
-      --ok:         #059669;
-      --ok-dim:     rgba(5,150,105,.10);
-      --err:        #dc2626;
-      --err-dim:    rgba(220,38,38,.08);
-      --text:       #1a202c;
-      --muted:      #4a5568;
-      --dim:        #a0aec0;
-      --shadow:     0 4px 24px rgba(0,0,0,.08);
-      --shadow-sm:  0 2px 8px rgba(0,0,0,.06);
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg); color: var(--text);
-      min-height: 100vh; line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .hdr {
-      position: sticky; top: 0; z-index: 200;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 20px;
-      background: rgba(7,13,26,.9);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
-    }
-    [data-theme="light"] .hdr { background: rgba(255,255,255,.9); }
-    .hdr-title {
-      font-size: 1.1rem; font-weight: 800; letter-spacing: -.03em;
-      background: linear-gradient(135deg, var(--accent), #8b5cf6);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .theme-btn {
-      width: 40px; height: 40px; border-radius: 50%;
-      border: 1px solid var(--border); background: var(--card);
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem; transition: transform .15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .theme-btn:active { transform: scale(.9); }
-
-    .wrap { max-width: 900px; margin: 0 auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 18px; }
-
-    .search-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r); padding: 20px; box-shadow: var(--shadow);
-      display: flex; flex-direction: column; gap: 14px;
-    }
-    .field-label { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-    .ip-input {
-      width: 100%; min-height: 96px; max-height: 220px; padding: 12px 14px; resize: vertical;
-      background: var(--card); border: 1.5px solid var(--border); border-radius: var(--r-sm);
-      color: var(--text); font-family: var(--mono); font-size: .95rem; line-height: 1.7;
-      outline: none; transition: border-color .2s;
-    }
-    .ip-input::placeholder { color: var(--dim); }
-    .ip-input:focus { border-color: var(--accent); }
-    .actions { display: flex; gap: 10px; }
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 13px 22px; border-radius: 50px; border: none;
-      font-size: .95rem; font-weight: 700; cursor: pointer;
-      transition: all .2s; white-space: nowrap; user-select: none;
-      -webkit-tap-highlight-color: transparent; min-height: 48px;
-    }
-    .btn:active { transform: scale(.95); }
-    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-    .btn-primary { flex: 1; background: var(--accent); color: #fff; }
-    .btn-primary:not(:disabled):hover { background: var(--accent-h); }
-    .btn-ghost { background: var(--card); color: var(--text); border: 1.5px solid var(--border); }
-    .btn-ghost:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; border: 2.5px solid rgba(255,255,255,.3); border-top-color: #fff; animation: spin .7s linear infinite; }
-
-    .alert { padding: 14px 16px; border-radius: var(--r-sm); font-size: .9rem; border: 1.5px solid; background: var(--err-dim); border-color: var(--err); color: var(--err); }
-
-    .progress-bar-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 50px; overflow: hidden; height: 6px; }
-    .progress-bar { height: 100%; background: var(--accent); transition: width .3s ease; width: 0%; }
-    .progress-label { font-size: .8rem; color: var(--muted); text-align: center; margin-top: 6px; }
-
-    .map-wrap { border-radius: var(--r); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
-    #map { height: 260px; background: var(--card); }
-    @media (min-width: 600px) { #map { height: 340px; } }
-
-    .results-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .results-lbl { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-    .results-badge { background: var(--accent-dim); color: var(--accent); font-size: .72rem; font-weight: 800; padding: 3px 11px; border-radius: 50px; }
-
-    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-    @media (min-width: 600px) { .grid { grid-template-columns: repeat(2,1fr); } }
-
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .ip-card { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--r); padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow-sm); animation: fadeUp .3s ease both; }
-    .ip-card.err-card { border-color: var(--err); }
-    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-    .card-ip { font-family: var(--mono); font-size: 1rem; font-weight: 600; word-break: break-all; }
-    .card-flag { font-size: 1.9rem; line-height: 1; flex-shrink: 0; }
-    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: .7rem; font-weight: 800; padding: 3px 10px; border-radius: 50px; text-transform: uppercase; letter-spacing: .06em; margin-top: 5px; }
-    .badge-ok  { background: var(--ok-dim);  color: var(--ok); }
-    .badge-err { background: var(--err-dim); color: var(--err); }
-    .loc-primary   { font-size: 1rem; font-weight: 600; }
-    .loc-secondary { font-size: .85rem; color: var(--muted); margin-top: 2px; }
-    .divider { height: 1px; background: var(--border); }
-    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .detail-label { font-size: .65rem; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); font-weight: 700; margin-bottom: 2px; }
-    .detail-val { font-size: .8rem; color: var(--muted); font-family: var(--mono); word-break: break-all; }
-    .full { grid-column: 1 / -1; }
-    .err-msg { font-size: .875rem; color: var(--err); }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#070d1a" id="theme-color-meta">
+<title>IP Geolocate</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #070d1a;
+  --surface: #0b1526;
+  --card: #0f1d30;
+  --card2: #132236;
+  --border: #1a2e47;
+  --border2: #223858;
+  --accent: #3b82f6;
+  --accent-h: #2563eb;
+  --accent-dim: rgba(59,130,246,.14);
+  --ok: #10b981;
+  --ok-dim: rgba(16,185,129,.12);
+  --warn: #f59e0b;
+  --warn-dim: rgba(245,158,11,.12);
+  --err: #ef4444;
+  --err-dim: rgba(239,68,68,.12);
+  --proxy: #8b5cf6;
+  --proxy-dim: rgba(139,92,246,.12);
+  --text: #dde6f0;
+  --muted: #5d7a9a;
+  --dim: #2d4460;
+  --shadow: 0 4px 24px rgba(0,0,0,.5);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.35);
+  --r: 14px;
+  --r-sm: 9px;
+  --mono: 'IBM Plex Mono', 'Cascadia Code', Consolas, monospace;
+  --sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+[data-theme="light"] {
+  --bg: #edf2f7;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --card2: #f7fafc;
+  --border: #d9e4ef;
+  --border2: #c5d5e5;
+  --accent: #2563eb;
+  --accent-h: #1d4ed8;
+  --accent-dim: rgba(37,99,235,.10);
+  --ok: #059669;
+  --ok-dim: rgba(5,150,105,.10);
+  --warn: #d97706;
+  --warn-dim: rgba(217,119,6,.10);
+  --err: #dc2626;
+  --err-dim: rgba(220,38,38,.08);
+  --proxy: #7c3aed;
+  --proxy-dim: rgba(124,58,237,.10);
+  --text: #1a2535;
+  --muted: #4a6080;
+  --dim: #9ab0c8;
+  --shadow: 0 4px 24px rgba(0,0,0,.08);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.06);
+}
+body {
+  font-family: var(--sans);
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+/* HEADER */
+.hdr {
+  position: sticky; top: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px;
+  background: rgba(7,13,26,.92);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+[data-theme="light"] .hdr { background: rgba(255,255,255,.92); }
+.hdr-left { display: flex; align-items: center; gap: 10px; }
+.hdr-title {
+  font-size: 1rem; font-weight: 800; letter-spacing: -.02em;
+  font-family: var(--mono);
+  color: var(--accent);
+}
+.hdr-title span { color: var(--muted); font-weight: 400; }
+.hdr-right { display: flex; align-items: center; gap: 8px; }
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--card);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; transition: all .15s; color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.icon-btn:active { transform: scale(.9); }
+/* LAYOUT */
+.wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 16px; }
+/* SEARCH CARD */
+.search-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 18px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.field-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 6px; }
+.ip-input {
+  width: 100%; min-height: 88px; max-height: 200px; padding: 11px 13px; resize: vertical;
+  background: var(--card); border: 1.5px solid var(--border); border-radius: var(--r-sm);
+  color: var(--text); font-family: var(--mono); font-size: .9rem; line-height: 1.8;
+  outline: none; transition: border-color .2s;
+}
+.ip-input::placeholder { color: var(--dim); }
+.ip-input:focus { border-color: var(--accent); }
+/* API KEY SECTION */
+.api-section {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.api-row { display: flex; gap: 8px; align-items: center; }
+.api-input {
+  flex: 1; padding: 8px 11px;
+  background: var(--surface); border: 1.5px solid var(--border); border-radius: 7px;
+  color: var(--text); font-family: var(--mono); font-size: .82rem;
+  outline: none; transition: border-color .2s;
+}
+.api-input:focus { border-color: var(--accent); }
+.api-input::placeholder { color: var(--dim); }
+.api-hint { font-size: .72rem; color: var(--muted); }
+.api-hint a { color: var(--accent); text-decoration: none; }
+.api-hint a:hover { text-decoration: underline; }
+/* ACTIONS */
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 11px 20px; border-radius: 8px; border: none;
+  font-size: .88rem; font-weight: 700; cursor: pointer; font-family: var(--sans);
+  transition: all .15s; white-space: nowrap; user-select: none;
+  -webkit-tap-highlight-color: transparent; min-height: 44px; letter-spacing: -.01em;
+}
+.btn:active { transform: scale(.96); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.btn-primary { flex: 1; background: var(--accent); color: #fff; }
+.btn-primary:not(:disabled):hover { background: var(--accent-h); }
+.btn-ghost { background: var(--card); color: var(--text); border: 1.5px solid var(--border); }
+.btn-ghost:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm {
+  padding: 6px 12px; font-size: .76rem; min-height: 30px; border-radius: 6px;
+  background: var(--card2); color: var(--muted); border: 1px solid var(--border);
+  cursor: pointer; font-family: var(--sans); font-weight: 600;
+  transition: all .15s; white-space: nowrap;
+}
+.btn-sm:hover { color: var(--text); border-color: var(--border2); }
+/* SPINNER */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; animation: spin .7s linear infinite; }
+/* ALERT */
+.alert { padding: 12px 15px; border-radius: var(--r-sm); font-size: .88rem; border: 1.5px solid; background: var(--err-dim); border-color: var(--err); color: var(--err); }
+/* PROGRESS */
+.progress-bar-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 50px; overflow: hidden; height: 5px; }
+.progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), #8b5cf6); transition: width .3s ease; width: 0%; }
+.progress-label { font-size: .76rem; color: var(--muted); text-align: center; margin-top: 5px; font-family: var(--mono); }
+/* MAP */
+.map-wrap { border-radius: var(--r); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
+#map { height: 240px; background: var(--card); }
+@media (min-width: 600px) { #map { height: 320px; } }
+/* RESULTS */
+.results-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+.results-lbl { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.results-right { display: flex; align-items: center; gap: 8px; }
+.results-badge { background: var(--accent-dim); color: var(--accent); font-size: .7rem; font-weight: 800; padding: 3px 10px; border-radius: 50px; font-family: var(--mono); }
+.grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 640px) { .grid { grid-template-columns: repeat(2,1fr); } }
+/* CARDS */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.ip-card {
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 16px;
+  display: flex; flex-direction: column; gap: 11px;
+  box-shadow: var(--shadow-sm); animation: fadeUp .28s ease both;
+  position: relative;
+}
+.ip-card.err-card { border-color: var(--err); }
+.ip-card.threat-card { border-color: var(--err); }
+.ip-card.warn-card { border-color: var(--warn); }
+/* CARD TOP */
+.card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.card-ip-row { display: flex; flex-direction: column; gap: 4px; }
+.card-ip { font-family: var(--mono); font-size: .95rem; font-weight: 600; word-break: break-all; }
+.card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.card-flag { font-size: 1.7rem; line-height: 1; }
+.card-actions { display: flex; gap: 5px; }
+/* BADGES */
+.badges { display: flex; flex-wrap: wrap; gap: 5px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: .65rem; font-weight: 800; padding: 2px 8px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: .07em; font-family: var(--mono);
+}
+.badge-ok { background: var(--ok-dim); color: var(--ok); }
+.badge-err { background: var(--err-dim); color: var(--err); }
+.badge-warn { background: var(--warn-dim); color: var(--warn); }
+.badge-proxy { background: var(--proxy-dim); color: var(--proxy); }
+.badge-info { background: var(--accent-dim); color: var(--accent); }
+/* LOCATION */
+.loc-primary { font-size: .95rem; font-weight: 600; }
+.loc-secondary { font-size: .82rem; color: var(--muted); margin-top: 2px; }
+/* DIVIDER */
+.divider { height: 1px; background: var(--border); }
+/* DETAIL GRID */
+.details { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.detail { display: flex; flex-direction: column; gap: 2px; }
+.detail.full { grid-column: 1 / -1; }
+.detail-label { font-size: .62rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 700; }
+.detail-val { font-size: .78rem; color: var(--text); font-family: var(--mono); word-break: break-all; }
+.detail-val.muted { color: var(--muted); }
+/* ABUSE SCORE BAR */
+.abuse-score-wrap { display: flex; flex-direction: column; gap: 4px; }
+.abuse-bar-bg { background: var(--border); border-radius: 50px; height: 5px; overflow: hidden; }
+.abuse-bar-fill { height: 100%; border-radius: 50px; transition: width .5s ease; }
+.abuse-score-row { display: flex; justify-content: space-between; align-items: center; }
+.abuse-score-val { font-family: var(--mono); font-size: .78rem; font-weight: 600; }
+/* THREAT FLAGS ROW */
+.threat-flags { display: flex; flex-wrap: wrap; gap: 5px; }
+/* ERR */
+.err-msg { font-size: .85rem; color: var(--err); }
+/* COPY TOAST */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--card); border: 1px solid var(--border);
+  padding: 10px 18px; border-radius: 8px; font-size: .82rem;
+  color: var(--text); box-shadow: var(--shadow);
+  opacity: 0; pointer-events: none;
+  transition: all .25s; z-index: 9999; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
 </head>
 <body>
-
 <header class="hdr">
-  <span class="hdr-title">IP Geolocate</span>
-  <button class="theme-btn" id="theme-btn" aria-label="Toggle theme"><span id="theme-icon">☀️</span></button>
+  <div class="hdr-left">
+    <span class="hdr-title">ip<span>/</span>geolocate</span>
+  </div>
+  <div class="hdr-right">
+    <button class="icon-btn" id="theme-btn" aria-label="Toggle theme"><span id="theme-icon">☀️</span></button>
+  </div>
 </header>
 
 <div class="wrap">
+  <!-- SEARCH -->
   <div class="search-card">
-    <div class="field-label">IP Addresses &mdash; one per line</div>
-    <textarea id="ip-input" class="ip-input" placeholder="8.8.8.8&#10;1.1.1.1&#10;9.9.9.9" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"></textarea>
+    <div>
+      <div class="field-label">IP Addresses &mdash; one per line</div>
+      <textarea id="ip-input" class="ip-input" placeholder="8.8.8.8&#10;1.1.1.1&#10;9.9.9.9" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"></textarea>
+    </div>
+    <div class="api-section">
+      <div class="field-label" style="margin-bottom:0">AbuseIPDB (optional)</div>
+      <div class="api-row">
+        <input type="password" id="abuse-key" class="api-input" placeholder="Paste your AbuseIPDB API key for abuse scoring" autocomplete="off" spellcheck="false">
+        <button class="btn-sm" id="save-key-btn" title="Save key to localStorage">Save</button>
+        <button class="btn-sm" id="clear-key-btn" title="Remove saved key" style="display:none">Clear</button>
+      </div>
+      <div class="api-hint" id="api-hint-text">Free key at <a href="https://www.abuseipdb.com/register" target="_blank" rel="noopener">abuseipdb.com</a> &mdash; 1,000 lookups/day. Stored locally in your browser only, never sent anywhere except AbuseIPDB.</div>
+    </div>
     <div class="actions">
       <button class="btn btn-primary" id="lookup-btn"><span id="lookup-lbl">Locate IPs</span></button>
       <button class="btn btn-ghost" id="myip-btn">My IP</button>
+      <button class="btn btn-ghost" id="paste-btn">Paste</button>
     </div>
   </div>
 
-  <div id="alert" style="display:none;"></div>
+  <div id="alert" style="display:none;" class="alert"></div>
 
   <div id="progress-wrap" style="display:none;">
     <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
@@ -181,15 +285,23 @@
   <div id="results-section" style="display:none;">
     <div class="results-hdr">
       <span class="results-lbl">Results</span>
-      <span class="results-badge" id="results-badge"></span>
+      <div class="results-right">
+        <span class="results-badge" id="results-badge"></span>
+        <button class="btn-sm" id="export-btn">Export CSV</button>
+        <button class="btn-sm" id="clear-btn">Clear</button>
+      </div>
     </div>
     <div class="grid" id="grid"></div>
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 'use strict';
+
+// ---- THEME ----
 const html = document.documentElement;
 const themeBtn = document.getElementById('theme-btn');
 const themeIcon = document.getElementById('theme-icon');
@@ -198,44 +310,56 @@ const metaColor = document.getElementById('theme-color-meta');
 function setTheme(t) {
   html.dataset.theme = t;
   themeIcon.textContent = t === 'dark' ? '☀️' : '🌙';
-  metaColor.content = t === 'dark' ? '#070d1a' : '#f0f4f8';
+  metaColor.content = t === 'dark' ? '#070d1a' : '#edf2f7';
   localStorage.setItem('theme', t);
   if (map) swapTiles(t);
 }
-themeBtn.addEventListener('click', function() { setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark'); });
+themeBtn.addEventListener('click', () => setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark'));
 
+// ---- MAP ----
 let map = null, tileLayer = null;
 const markers = [];
 
 function tileUrl(t) { return t === 'dark' ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'; }
-function tileAttr(t) { return t === 'dark' ? '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com">CARTO</a>' : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'; }
+function tileAttr(t) { return t === 'dark' ? '&copy; OSM &copy; CARTO' : '&copy; OpenStreetMap'; }
 
 function initMap() {
   if (map) return;
   map = L.map('map');
   map.setView([20, 0], 2);
-  const t = html.dataset.theme;
-  tileLayer = L.tileLayer(tileUrl(t), { attribution: tileAttr(t), maxZoom: 18 }).addTo(map);
+  tileLayer = L.tileLayer(tileUrl(html.dataset.theme), { attribution: tileAttr(html.dataset.theme), maxZoom: 18 }).addTo(map);
 }
+
 function swapTiles(t) {
   if (!map) return;
   tileLayer.remove();
   tileLayer = L.tileLayer(tileUrl(t), { attribution: tileAttr(t), maxZoom: 18 }).addTo(map);
 }
+
 function updateMap(results) {
   initMap();
-  markers.forEach(function(m) { m.remove(); });
+  markers.forEach(m => m.remove());
   markers.length = 0;
-  var valid = results.filter(function(r) { return r.success && r.latitude && r.longitude; });
+  const valid = results.filter(r => r.success && r.latitude && r.longitude);
   if (!valid.length) return;
-  var bounds = [];
-  valid.forEach(function(r) {
-    var lat = parseFloat(r.latitude), lon = parseFloat(r.longitude);
+  const bounds = [];
+  valid.forEach(r => {
+    const lat = parseFloat(r.latitude), lon = parseFloat(r.longitude);
     if (isNaN(lat) || isNaN(lon)) return;
-    var flag = countryFlag(r.country_code);
-    var place = [r.city, r.region, r.country].filter(Boolean).join(', ');
-    var popup = '<div style="font:13px/1.6 monospace"><strong>' + esc(r.ip) + '</strong><br>' + flag + ' ' + esc(place) + '<br><span style="color:#888">' + esc(r.isp || '') + '</span></div>';
-    var m = L.circleMarker([lat, lon], { radius: 8, fillColor: '#3b82f6', color: '#fff', weight: 2, opacity: 1, fillOpacity: .9 }).bindPopup(popup).addTo(map);
+    const flag = countryFlag(r.country_code);
+    const place = [r.city, r.region, r.country].filter(Boolean).join(', ');
+    const abuseColor = r.abuse_score > 50 ? '#ef4444' : r.abuse_score > 20 ? '#f59e0b' : '#3b82f6';
+    const popup = `<div style="font:12px/1.7 'IBM Plex Mono',monospace;min-width:170px">
+      <strong style="font-size:13px">${esc(r.ip)}</strong><br>
+      ${flag} ${esc(place)}<br>
+      <span style="color:#888">${esc(r.isp || '')}</span>
+      ${r.asn ? `<br><span style="color:#666">${esc(r.asn)}</span>` : ''}
+      ${r.abuse_score != null ? `<br><span style="color:${abuseColor}">Abuse: ${r.abuse_score}%</span>` : ''}
+      ${r.is_proxy || r.is_vpn || r.is_tor ? `<br><span style="color:#8b5cf6">Proxy/VPN/Tor detected</span>` : ''}
+    </div>`;
+    const m = L.circleMarker([lat, lon], {
+      radius: 8, fillColor: abuseColor, color: '#fff', weight: 2, opacity: 1, fillOpacity: .9
+    }).bindPopup(popup).addTo(map);
     markers.push(m);
     bounds.push([lat, lon]);
   });
@@ -243,109 +367,454 @@ function updateMap(results) {
   else if (bounds.length > 1) map.fitBounds(bounds, { padding: [30, 30] });
 }
 
+// ---- HELPERS ----
 function countryFlag(code) {
   if (!code || code.length !== 2) return '';
-  try { var off = 0x1F1E6 - 65; return String.fromCodePoint(code.toUpperCase().charCodeAt(0) + off, code.toUpperCase().charCodeAt(1) + off); } catch(e) { return ''; }
+  try { const off = 0x1F1E6 - 65; return String.fromCodePoint(code.toUpperCase().charCodeAt(0) + off, code.toUpperCase().charCodeAt(1) + off); } catch(e) { return ''; }
 }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function isValidIP(ip) {
-  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) return ip.split('.').every(function(n) { return +n >= 0 && +n <= 255; });
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) return ip.split('.').every(n => +n >= 0 && +n <= 255);
   return /^[0-9a-fA-F:]{2,39}$/.test(ip) && ip.includes(':');
 }
 
-async function fetchGeo(ip) {
-  if (!isValidIP(ip)) return { ip: ip, success: false, error: 'Invalid IP address' };
-  try {
-    var res = await fetch('https://ipapi.co/' + encodeURIComponent(ip) + '/json/');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    var data = await res.json();
-    if (data.error) return { ip: ip, success: false, error: data.reason || 'Lookup failed' };
-    return { ip: ip, success: true, country: data.country_name || '', country_code: data.country_code || '', region: data.region || '', city: data.city || '', latitude: data.latitude != null ? String(data.latitude) : '', longitude: data.longitude != null ? String(data.longitude) : '', isp: data.org || '', org: data.org || '', asn: data.asn || '' };
-  } catch(e) { return { ip: ip, success: false, error: 'Network error: ' + e.message }; }
+// ---- KNOWN HOSTING ASNs ----
+const HOSTING_ASNS = new Set([
+  'AS14061','AS16509','AS8075','AS13335','AS20940','AS15169','AS396982',
+  'AS14618','AS16276','AS63949','AS24940','AS51167','AS20473','AS9009',
+  'AS60068','AS36352','AS46484','AS46664','AS22612','AS30083','AS43350',
+  'AS202053','AS394711','AS136907','AS45090','AS37963','AS45102','AS55967',
+  'AS16591','AS32475','AS53667','AS36351','AS40676','AS8100','AS32613',
+  'AS19318','AS47583','AS34309','AS200651','AS209854','AS7203',
+]);
+
+function isHostingASN(asn) {
+  if (!asn) return false;
+  const parts = asn.split(' ');
+  return HOSTING_ASNS.has(parts[0]);
 }
 
-function makeCard(r, idx) {
-  var d = document.createElement('div');
-  d.className = 'ip-card' + (r.success ? '' : ' err-card');
-  d.style.animationDelay = (idx * 55) + 'ms';
-  if (r.success) {
-    var flag = countryFlag(r.country_code);
-    var primary = r.city || r.region || r.country || '-';
-    var secondary = r.city ? [r.region, r.country].filter(Boolean).join(', ') : (r.region ? r.country : '');
-    d.innerHTML = '<div class="card-top"><div><div class="card-ip">' + esc(r.ip) + '</div><span class="badge badge-ok">&#10003; Located</span></div>' + (flag ? '<div class="card-flag">' + flag + '</div>' : '') + '</div><div><div class="loc-primary">' + esc(primary) + '</div>' + (secondary ? '<div class="loc-secondary">' + esc(secondary) + '</div>' : '') + '</div><div class="divider"></div><div class="details">' + (r.latitude && r.longitude ? '<div><div class="detail-label">Coordinates</div><div class="detail-val">' + esc(r.latitude) + ', ' + esc(r.longitude) + '</div></div>' : '') + (r.asn ? '<div><div class="detail-label">ASN</div><div class="detail-val">' + esc(r.asn) + '</div></div>' : '') + (r.isp ? '<div class="full"><div class="detail-label">ISP</div><div class="detail-val">' + esc(r.isp) + '</div></div>' : '') + '</div>';
-  } else {
-    d.innerHTML = '<div class="card-top"><div><div class="card-ip">' + esc(r.ip) + '</div><span class="badge badge-err">&#10007; Failed</span></div></div><div class="err-msg">' + esc(r.error || 'Unknown error') + '</div>';
+// ---- FETCH GEO (ip-api.com - includes proxy/vpn/tor) ----
+async function fetchGeo(ip) {
+  if (!isValidIP(ip)) return { ip, success: false, error: 'Invalid IP address' };
+  try {
+    const fields = 'status,message,country,countryCode,regionName,city,lat,lon,isp,org,as,proxy,hosting,mobile,query';
+    const res = await fetch(`https://ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    if (d.status !== 'success') return { ip, success: false, error: d.message || 'Lookup failed' };
+
+    // Parse ASN number from "AS#### Name" format
+    const asnMatch = d.as ? d.as.match(/^(AS\d+)/) : null;
+    const asnNum = asnMatch ? asnMatch[1] : '';
+
+    return {
+      ip,
+      success: true,
+      country: d.country || '',
+      country_code: d.countryCode || '',
+      region: d.regionName || '',
+      city: d.city || '',
+      latitude: d.lat != null ? String(d.lat) : '',
+      longitude: d.lon != null ? String(d.lon) : '',
+      isp: d.isp || '',
+      org: d.org || '',
+      asn: asnNum,
+      asn_full: d.as || '',
+      is_proxy: d.proxy || false,
+      is_hosting: d.hosting || isHostingASN(asnNum),
+      is_mobile: d.mobile || false,
+    };
+  } catch(e) { return { ip, success: false, error: 'Network error: ' + e.message }; }
+}
+
+// ---- FETCH RDNS ----
+async function fetchRDNS(ip) {
+  try {
+    // Use dns.google for PTR lookups
+    const isIPv4 = ip.includes('.');
+    let query;
+    if (isIPv4) {
+      query = ip.split('.').reverse().join('.') + '.in-addr.arpa';
+    } else {
+      // IPv6 reverse
+      const expanded = expandIPv6(ip);
+      if (!expanded) return null;
+      query = expanded.replace(/:/g,'').split('').reverse().join('.') + '.ip6.arpa';
+    }
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(query)}&type=PTR`);
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (d.Answer && d.Answer.length > 0) {
+      return d.Answer[0].data.replace(/\.$/, '');
+    }
+    return null;
+  } catch(e) { return null; }
+}
+
+function expandIPv6(ip) {
+  try {
+    // Simple expansion for common cases
+    if (!ip.includes(':')) return null;
+    const parts = ip.split('::');
+    if (parts.length > 2) return null;
+    let left = parts[0] ? parts[0].split(':') : [];
+    let right = parts[1] ? parts[1].split(':') : [];
+    while (left.length + right.length < 8) left.push('0000');
+    return [...left, ...right].map(p => p.padStart(4,'0')).join(':');
+  } catch(e) { return null; }
+}
+
+// ---- FETCH ABUSEIPDB ----
+async function fetchAbuse(ip, apiKey) {
+  if (!apiKey) return null;
+  try {
+    // AbuseIPDB blocks direct browser requests without CORS proxy
+    // Use a CORS-anywhere compatible approach
+    const res = await fetch(`https://api.abuseipdb.com/api/v2/check?ipAddress=${encodeURIComponent(ip)}&maxAgeInDays=90`, {
+      headers: {
+        'Key': apiKey,
+        'Accept': 'application/json',
+      }
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (d.data) {
+      return {
+        abuse_score: d.data.abuseConfidenceScore,
+        total_reports: d.data.totalReports,
+        last_reported: d.data.lastReportedAt,
+        is_whitelisted: d.data.isWhitelisted,
+        usage_type: d.data.usageType,
+        isp: d.data.isp,
+        domain: d.data.domain,
+      };
+    }
+    return null;
+  } catch(e) { return null; }
+}
+
+// ---- COMBINED LOOKUP ----
+async function lookupIP(ip) {
+  const abuseKey = document.getElementById('abuse-key').value.trim();
+
+  // Run geo + rdns in parallel, abuse after (optional)
+  const [geo, rdns] = await Promise.all([fetchGeo(ip), fetchRDNS(ip)]);
+
+  if (!geo.success) return geo;
+
+  geo.rdns = rdns;
+
+  // Determine if VPN/Proxy/Tor based on ip-api hosting flag + ASN check
+  geo.is_datacenter = geo.is_hosting;
+
+  // Abuse score
+  if (abuseKey) {
+    const abuse = await fetchAbuse(ip, abuseKey);
+    if (abuse) {
+      geo.abuse_score = abuse.abuse_score;
+      geo.abuse_reports = abuse.total_reports;
+      geo.abuse_last = abuse.last_reported;
+      geo.abuse_usage = abuse.usage_type;
+    }
   }
+
+  return geo;
+}
+
+// ---- CARD ----
+function makeCard(r, idx) {
+  const d = document.createElement('div');
+  let cardClass = 'ip-card';
+  if (!r.success) cardClass += ' err-card';
+  else if (r.abuse_score > 50) cardClass += ' threat-card';
+  else if ((r.is_proxy || r.is_datacenter || r.abuse_score > 20)) cardClass += ' warn-card';
+  d.className = cardClass;
+  d.style.animationDelay = (idx * 50) + 'ms';
+
+  if (!r.success) {
+    d.innerHTML = `<div class="card-top"><div><div class="card-ip">${esc(r.ip)}</div><div class="badges"><span class="badge badge-err">Failed</span></div></div></div><div class="err-msg">${esc(r.error || 'Unknown error')}</div>`;
+    return d;
+  }
+
+  const flag = countryFlag(r.country_code);
+  const primary = r.city || r.region || r.country || 'Unknown';
+  const secondary = r.city ? [r.region, r.country].filter(Boolean).join(', ') : (r.region ? r.country : '');
+
+  // Build badge list
+  const badges = [];
+  if (r.is_proxy) badges.push('<span class="badge badge-proxy">Proxy</span>');
+  if (r.is_datacenter) badges.push('<span class="badge badge-warn">Datacenter</span>');
+  if (r.is_mobile) badges.push('<span class="badge badge-info">Mobile</span>');
+  if (r.abuse_score != null) {
+    const cls = r.abuse_score > 50 ? 'badge-err' : r.abuse_score > 20 ? 'badge-warn' : 'badge-ok';
+    badges.push(`<span class="badge ${cls}">Abuse ${r.abuse_score}%</span>`);
+  }
+  if (!badges.length) badges.push('<span class="badge badge-ok">Clean</span>');
+
+  // Abuse score bar
+  let abuseHtml = '';
+  if (r.abuse_score != null) {
+    const score = r.abuse_score;
+    const barColor = score > 50 ? 'var(--err)' : score > 20 ? 'var(--warn)' : 'var(--ok)';
+    abuseHtml = `
+      <div class="detail full">
+        <div class="detail-label">Abuse Confidence Score</div>
+        <div class="abuse-score-wrap">
+          <div class="abuse-score-row">
+            <span class="abuse-score-val" style="color:${barColor}">${score}%</span>
+            <span class="detail-val muted">${r.abuse_reports || 0} report${r.abuse_reports !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="abuse-bar-bg"><div class="abuse-bar-fill" style="width:${score}%;background:${barColor}"></div></div>
+        </div>
+      </div>`;
+  }
+
+  d.innerHTML = `
+    <div class="card-top">
+      <div class="card-ip-row">
+        <div class="card-ip">${esc(r.ip)}</div>
+        <div class="badges">${badges.join('')}</div>
+      </div>
+      <div class="card-right">
+        ${flag ? `<div class="card-flag">${flag}</div>` : ''}
+        <div class="card-actions">
+          <button class="btn-sm copy-btn" title="Copy to clipboard">Copy</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="loc-primary">${esc(primary)}</div>
+      ${secondary ? `<div class="loc-secondary">${esc(secondary)}</div>` : ''}
+    </div>
+    <div class="divider"></div>
+    <div class="details">
+      ${r.latitude && r.longitude ? `<div class="detail"><div class="detail-label">Coordinates</div><div class="detail-val">${esc(r.latitude)}, ${esc(r.longitude)}</div></div>` : ''}
+      ${r.asn ? `<div class="detail"><div class="detail-label">ASN</div><div class="detail-val">${esc(r.asn)}</div></div>` : ''}
+      ${r.isp ? `<div class="detail full"><div class="detail-label">ISP / Org</div><div class="detail-val">${esc(r.isp)}</div></div>` : ''}
+      ${r.rdns ? `<div class="detail full"><div class="detail-label">Reverse DNS</div><div class="detail-val">${esc(r.rdns)}</div></div>` : ''}
+      ${r.asn_full ? `<div class="detail full"><div class="detail-label">ASN Name</div><div class="detail-val muted">${esc(r.asn_full)}</div></div>` : ''}
+      ${abuseHtml}
+      ${r.abuse_usage ? `<div class="detail full"><div class="detail-label">Usage Type</div><div class="detail-val muted">${esc(r.abuse_usage)}</div></div>` : ''}
+    </div>`;
+
+  d.querySelector('.copy-btn').addEventListener('click', () => copyCard(r));
   return d;
 }
 
-var lookupBtn = document.getElementById('lookup-btn');
-var lookupLbl = document.getElementById('lookup-lbl');
-var myipBtn = document.getElementById('myip-btn');
-var ipInput = document.getElementById('ip-input');
-var mapWrap = document.getElementById('map-wrap');
-var resultsSection = document.getElementById('results-section');
-var grid = document.getElementById('grid');
-var badge = document.getElementById('results-badge');
-var alertEl = document.getElementById('alert');
-var progressWrap = document.getElementById('progress-wrap');
-var progressBar = document.getElementById('progress-bar');
-var progressLabel = document.getElementById('progress-label');
+function copyCard(r) {
+  const lines = [
+    `IP: ${r.ip}`,
+    r.country ? `Location: ${[r.city, r.region, r.country].filter(Boolean).join(', ')}` : null,
+    r.asn_full ? `ASN: ${r.asn_full}` : null,
+    r.isp ? `ISP: ${r.isp}` : null,
+    r.rdns ? `rDNS: ${r.rdns}` : null,
+    r.is_proxy ? 'Proxy: Yes' : null,
+    r.is_datacenter ? 'Datacenter: Yes' : null,
+    r.abuse_score != null ? `Abuse Score: ${r.abuse_score}% (${r.abuse_reports || 0} reports)` : null,
+  ].filter(Boolean);
+  navigator.clipboard.writeText(lines.join('\n')).then(() => showToast('Copied to clipboard'));
+}
+
+// ---- TOAST ----
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ---- EXPORT CSV ----
+let allResults = [];
+
+function exportCSV() {
+  if (!allResults.length) return;
+  const headers = ['IP','Country','Region','City','Latitude','Longitude','ISP','Org','ASN','rDNS','Proxy','Datacenter','Mobile','Abuse Score','Abuse Reports','Usage Type'];
+  const rows = allResults.map(r => [
+    r.ip, r.country||'', r.region||'', r.city||'',
+    r.latitude||'', r.longitude||'', r.isp||'', r.org||'', r.asn_full||'',
+    r.rdns||'',
+    r.is_proxy ? 'Yes' : 'No',
+    r.is_datacenter ? 'Yes' : 'No',
+    r.is_mobile ? 'Yes' : 'No',
+    r.abuse_score != null ? r.abuse_score : '',
+    r.abuse_reports != null ? r.abuse_reports : '',
+    r.abuse_usage || '',
+  ].map(v => `"${String(v).replace(/"/g,'""')}"`));
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `ip-lookup-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ---- MAIN LOOKUP ----
+const lookupBtn = document.getElementById('lookup-btn');
+const lookupLbl = document.getElementById('lookup-lbl');
+const myipBtn = document.getElementById('myip-btn');
+const pasteBtn = document.getElementById('paste-btn');
+const ipInput = document.getElementById('ip-input');
+const mapWrap = document.getElementById('map-wrap');
+const resultsSection = document.getElementById('results-section');
+const grid = document.getElementById('grid');
+const badge = document.getElementById('results-badge');
+const alertEl = document.getElementById('alert');
+const progressWrap = document.getElementById('progress-wrap');
+const progressBar = document.getElementById('progress-bar');
+const progressLabel = document.getElementById('progress-label');
 
 function setLoading(on) {
-  lookupBtn.disabled = myipBtn.disabled = on;
+  lookupBtn.disabled = myipBtn.disabled = pasteBtn.disabled = on;
   lookupLbl.textContent = on ? 'Looking up...' : 'Locate IPs';
-  var s = lookupBtn.querySelector('.spinner');
-  if (on && !s) { var sp = document.createElement('span'); sp.className = 'spinner'; lookupBtn.prepend(sp); }
+  const s = lookupBtn.querySelector('.spinner');
+  if (on && !s) { const sp = document.createElement('span'); sp.className = 'spinner'; lookupBtn.prepend(sp); }
   else if (!on && s) s.remove();
 }
 function showAlert(msg) { alertEl.textContent = msg; alertEl.style.display = 'block'; }
 function hideAlert() { alertEl.style.display = 'none'; }
-function setProgress(done, total) { progressBar.style.width = (total ? Math.round(done/total*100) : 0) + '%'; progressLabel.textContent = done + ' / ' + total + ' IPs'; }
+function setProgress(done, total) {
+  progressBar.style.width = (total ? Math.round(done/total*100) : 0) + '%';
+  progressLabel.textContent = `${done} / ${total} IPs processed`;
+}
 
 async function doLookup(ips) {
   if (!ips.length) return;
   setLoading(true); hideAlert();
   grid.innerHTML = ''; resultsSection.style.display = 'none'; mapWrap.style.display = 'none';
+  allResults = [];
+
   if (ips.length > 1) { progressWrap.style.display = 'block'; setProgress(0, ips.length); }
+
   try {
-    var done = 0, results = [], CHUNK = 5;
-    for (var i = 0; i < ips.length; i += CHUNK) {
-      var chunkResults = await Promise.all(ips.slice(i, i+CHUNK).map(fetchGeo));
-      chunkResults.forEach(function(r) { results.push(r); done++; setProgress(done, ips.length); grid.appendChild(makeCard(r, results.length-1)); });
+    let done = 0;
+    const CHUNK = 3; // smaller chunk due to more API calls per IP
+
+    for (let i = 0; i < ips.length; i += CHUNK) {
+      const chunk = ips.slice(i, i + CHUNK);
+      const chunkResults = await Promise.all(chunk.map(lookupIP));
+      chunkResults.forEach(r => {
+        allResults.push(r);
+        done++;
+        setProgress(done, ips.length);
+        grid.appendChild(makeCard(r, allResults.length - 1));
+      });
       resultsSection.style.display = 'block';
     }
+
     progressWrap.style.display = 'none';
-    badge.textContent = results.filter(function(r){return r.success;}).length + ' / ' + results.length;
-    var hasCoords = results.some(function(r){return r.success && r.latitude && r.longitude;});
-    if (hasCoords) { mapWrap.style.display = 'block'; updateMap(results); setTimeout(function(){if(map)map.invalidateSize();},50); }
-  } catch(e) { showAlert('Error: ' + e.message); progressWrap.style.display = 'none'; }
-  finally { setLoading(false); }
+    const ok = allResults.filter(r => r.success).length;
+    badge.textContent = `${ok} / ${allResults.length}`;
+
+    const hasCoords = allResults.some(r => r.success && r.latitude && r.longitude);
+    if (hasCoords) {
+      mapWrap.style.display = 'block';
+      updateMap(allResults);
+      setTimeout(() => { if (map) map.invalidateSize(); }, 50);
+    }
+  } catch(e) {
+    showAlert('Error: ' + e.message);
+    progressWrap.style.display = 'none';
+  } finally {
+    setLoading(false);
+  }
 }
 
-lookupBtn.addEventListener('click', function() {
-  var raw = ipInput.value.trim();
+lookupBtn.addEventListener('click', () => {
+  const raw = ipInput.value.trim();
   if (!raw) { showAlert('Enter at least one IP address.'); return; }
-  doLookup([...new Set(raw.split(/[\n,]+/).map(function(s){return s.trim();}).filter(Boolean))]);
+  doLookup([...new Set(raw.split(/[\n,\s]+/).map(s => s.trim()).filter(Boolean))]);
 });
-ipInput.addEventListener('keydown', function(e) { if ((e.ctrlKey||e.metaKey) && e.key==='Enter') lookupBtn.click(); });
 
-myipBtn.addEventListener('click', async function() {
-  var orig = myipBtn.textContent;
+ipInput.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') lookupBtn.click(); });
+
+myipBtn.addEventListener('click', async () => {
+  const orig = myipBtn.textContent;
   myipBtn.disabled = true; myipBtn.textContent = '...'; hideAlert();
   try {
-    var res = await fetch('https://api.ipify.org?format=json');
-    var data = await res.json();
+    const res = await fetch('https://api.ipify.org?format=json');
+    const data = await res.json();
     if (data.ip) { ipInput.value = data.ip; doLookup([data.ip]); }
     else showAlert('Could not detect your IP.');
   } catch(e) { showAlert('Could not detect your IP.'); }
   finally { myipBtn.disabled = false; myipBtn.textContent = orig; }
 });
 
-var saved = localStorage.getItem('theme') || 'dark';
+pasteBtn.addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      const ips = [...new Set(text.split(/[\n,\s]+/).map(s => s.trim()).filter(s => isValidIP(s)))];
+      if (ips.length) {
+        ipInput.value = ips.join('\n');
+        showToast(`${ips.length} IP${ips.length !== 1 ? 's' : ''} pasted`);
+      } else {
+        showToast('No valid IPs found in clipboard');
+      }
+    }
+  } catch(e) { showAlert('Clipboard access denied. Paste manually.'); }
+});
+
+document.getElementById('export-btn').addEventListener('click', exportCSV);
+document.getElementById('clear-btn').addEventListener('click', () => {
+  ipInput.value = '';
+  grid.innerHTML = '';
+  allResults = [];
+  resultsSection.style.display = 'none';
+  mapWrap.style.display = 'none';
+  hideAlert();
+});
+
+// ---- API KEY PERSISTENCE ----
+const abuseKeyInput = document.getElementById('abuse-key');
+const saveKeyBtn = document.getElementById('save-key-btn');
+const clearKeyBtn = document.getElementById('clear-key-btn');
+const apiHintText = document.getElementById('api-hint-text');
+
+function loadSavedKey() {
+  const stored = localStorage.getItem('abuseipdb_key');
+  if (stored) {
+    abuseKeyInput.value = stored;
+    saveKeyBtn.style.display = 'none';
+    clearKeyBtn.style.display = '';
+    apiHintText.textContent = 'AbuseIPDB key loaded from local storage. Click Clear to remove it.';
+  }
+}
+
+saveKeyBtn.addEventListener('click', () => {
+  const key = abuseKeyInput.value.trim();
+  if (!key) { showToast('Paste a key first'); return; }
+  localStorage.setItem('abuseipdb_key', key);
+  saveKeyBtn.style.display = 'none';
+  clearKeyBtn.style.display = '';
+  apiHintText.textContent = 'Key saved to local storage. Loads automatically on next visit.';
+  showToast('Key saved');
+});
+
+clearKeyBtn.addEventListener('click', () => {
+  localStorage.removeItem('abuseipdb_key');
+  abuseKeyInput.value = '';
+  clearKeyBtn.style.display = 'none';
+  saveKeyBtn.style.display = '';
+  apiHintText.innerHTML = 'Free key at <a href="https://www.abuseipdb.com/register" target="_blank" rel="noopener">abuseipdb.com</a> &mdash; 1,000 lookups/day. Stored locally in your browser only, never sent anywhere except AbuseIPDB.';
+  showToast('Key cleared');
+});
+
+// Show save button again if user types in the field after a key is saved
+abuseKeyInput.addEventListener('input', () => {
+  const stored = localStorage.getItem('abuseipdb_key');
+  if (abuseKeyInput.value.trim() !== stored) {
+    saveKeyBtn.style.display = '';
+  }
+});
+
+loadSavedKey();
+
+// ---- INIT THEME ----
+const saved = localStorage.getItem('theme') || 'dark';
 html.dataset.theme = saved;
 themeIcon.textContent = saved === 'dark' ? '☀️' : '🌙';
-metaColor.content = saved === 'dark' ? '#070d1a' : '#f0f4f8';
+metaColor.content = saved === 'dark' ? '#070d1a' : '#edf2f7';
 </script>
 </body>
 </html>
