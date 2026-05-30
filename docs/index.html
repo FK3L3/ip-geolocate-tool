@@ -369,32 +369,31 @@ function isHostingASN(asn) {
   return HOSTING_ASNS.has(parts[0]);
 }
 
+// ---- FETCH GEO (ipapi.co) ----
 async function fetchGeo(ip) {
   if (!isValidIP(ip)) return { ip, success: false, error: 'Invalid IP address' };
   try {
-    const fields = 'status,message,country,countryCode,regionName,city,lat,lon,isp,org,as,proxy,hosting,mobile,query';
-    const res = await fetch(`https://ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}`);
+    const res = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
-    if (d.status !== 'success') return { ip, success: false, error: d.message || 'Lookup failed' };
-    const asnMatch = d.as ? d.as.match(/^(AS\d+)/) : null;
-    const asnNum = asnMatch ? asnMatch[1] : '';
+    if (d.error) return { ip, success: false, error: d.reason || 'Lookup failed' };
+    const asnNum = d.asn || '';
     return {
       ip,
       success: true,
-      country: d.country || '',
-      country_code: d.countryCode || '',
-      region: d.regionName || '',
+      country: d.country_name || '',
+      country_code: d.country_code || '',
+      region: d.region || '',
       city: d.city || '',
-      latitude: d.lat != null ? String(d.lat) : '',
-      longitude: d.lon != null ? String(d.lon) : '',
-      isp: d.isp || '',
+      latitude: d.latitude != null ? String(d.latitude) : '',
+      longitude: d.longitude != null ? String(d.longitude) : '',
+      isp: d.org || '',
       org: d.org || '',
       asn: asnNum,
-      asn_full: d.as || '',
-      is_proxy: d.proxy || false,
-      is_hosting: d.hosting || isHostingASN(asnNum),
-      is_mobile: d.mobile || false,
+      asn_full: d.org || '',
+      is_proxy: false,
+      is_hosting: isHostingASN(asnNum),
+      is_mobile: false,
     };
   } catch(e) { return { ip, success: false, error: 'Network error: ' + e.message }; }
 }
