@@ -390,26 +390,26 @@ function isValidIP(ip) {
   return /^[0-9a-fA-F:]{2,39}$/.test(ip) && ip.includes(':');
 }
 
-/* ── Core: fetch one IP via ipwho.is directly ── */
+/* ── Core: fetch one IP via ipapi.co directly ── */
 async function fetchGeo(ip) {
   if (!isValidIP(ip)) return { ip, success: false, error: 'Invalid IP address' };
   try {
-    const res  = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`);
+    const res  = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (!data.success) return { ip, success: false, error: data.message || 'API returned failure' };
-    const conn = data.connection || {};
+    if (data.error) return { ip, success: false, error: data.reason || 'Lookup failed' };
     return {
       ip,
       success:      true,
-      country:      data.country      || '',
-      country_code: data.country_code || '',
-      region:       data.region       || '',
-      city:         data.city         || '',
+      country:      data.country_name  || '',
+      country_code: data.country_code  || '',
+      region:       data.region        || '',
+      city:         data.city          || '',
       latitude:     data.latitude  != null ? String(data.latitude)  : '',
       longitude:    data.longitude != null ? String(data.longitude) : '',
-      isp:          conn.isp  || '',
-      org:          conn.org  || '',
-      asn:          conn.asn  != null ? String(conn.asn) : '',
+      isp:          data.org           || '',
+      org:          data.org           || '',
+      asn:          data.asn           || '',
     };
   } catch (e) {
     return { ip, success: false, error: 'Network error: ' + e.message };
@@ -501,7 +501,7 @@ function setProgress(done, total) {
   progressLabel.textContent = `${done} / ${total} IPs`;
 }
 
-/* ── Lookup: calls ipwho.is directly from the browser ── */
+/* ── Lookup: calls ipapi.co directly from the browser ── */
 async function doLookup(ips) {
   if (!ips.length) return;
   setLoading(true);
