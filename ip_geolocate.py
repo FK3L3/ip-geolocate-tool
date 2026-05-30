@@ -30,6 +30,7 @@ class GeoResult:
     ip: str
     success: bool
     country: str = ""
+    country_code: str = ""
     region: str = ""
     city: str = ""
     latitude: str = ""
@@ -143,6 +144,7 @@ def fetch_geo(ip: str, timeout: float) -> GeoResult:
         ip=ip,
         success=True,
         country=str(payload.get("country", "")),
+        country_code=str(payload.get("country_code", "")),
         region=str(payload.get("region", "")),
         city=str(payload.get("city", "")),
         latitude=str(payload.get("latitude", "")),
@@ -194,6 +196,7 @@ def write_csv(results: Iterable[GeoResult], output_file: Path) -> None:
                 "ip",
                 "success",
                 "country",
+                "country_code",
                 "region",
                 "city",
                 "latitude",
@@ -210,6 +213,7 @@ def write_csv(results: Iterable[GeoResult], output_file: Path) -> None:
                     row.ip,
                     row.success,
                     row.country,
+                    row.country_code,
                     row.region,
                     row.city,
                     row.latitude,
