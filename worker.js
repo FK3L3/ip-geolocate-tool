@@ -1,46 +1,50 @@
 // Cloudflare Worker — AbuseIPDB CORS proxy for ip/geolocate
-// Deploy at https://dash.cloudflare.com/?to=/:account/workers
+// Deploy via the Cloudflare dashboard drag-and-drop uploader (no wrangler needed).
 //
-// The worker accepts:
-//   GET /?ip=<address>   with header  X-Abuse-Key: <your-key>
-// and proxies to AbuseIPDB, adding CORS headers so the browser accepts it.
+// Accepts:  GET /?ip=<address>   +   header  X-Abuse-Key: <your-api-key>
+// Returns:  AbuseIPDB JSON response with CORS headers added.
 
-const CORS = {
+var CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'X-Abuse-Key, Accept',
 };
 
-export default {
-  async fetch(request) {
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: CORS });
-    }
+addEventListener('fetch', function(event) {
+  event.respondWith(handleRequest(event.request));
+});
 
-    const url = new URL(request.url);
-    const ip  = url.searchParams.get('ip')  || '';
-    const key = request.headers.get('X-Abuse-Key') || '';
+async function handleRequest(request) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS });
+  }
 
-    if (!ip || !key) {
-      return json({ error: 'Missing ip or X-Abuse-Key header' }, 400);
-    }
+  var url = new URL(request.url);
+  var ip  = url.searchParams.get('ip')  || '';
+  var key = request.headers.get('X-Abuse-Key') || '';
 
-    const upstream = `https://api.abuseipdb.com/api/v2/check?ipAddress=${encodeURIComponent(ip)}&maxAgeInDays=90`;
-    const resp = await fetch(upstream, {
-      headers: { Key: key, Accept: 'application/json' },
-    });
+  if (!ip || !key) {
+    return jsonResponse({ error: 'Missing ip or X-Abuse-Key header' }, 400);
+  }
 
-    const body = await resp.text();
-    return new Response(body, {
-      status: resp.status,
-      headers: { 'Content-Type': 'application/json', ...CORS },
-    });
-  },
-};
+  var upstream = 'https://api.abuseipdb.com/api/v2/check'
+    + '?ipAddress=' + encodeURIComponent(ip)
+    + '&maxAgeInDays=90';
 
-function json(data, status = 200) {
+  var resp = await fetch(upstream, {
+    headers: { Key: key, Accept: 'application/json' },
+  });
+
+  var body = await resp.text();
+  return new Response(body, {
+    status: resp.status,
+    headers: Object.assign({ 'Content-Type': 'application/json' }, CORS),
+  });
+}
+
+function jsonResponse(data, status) {
   return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...CORS },
+    status: status || 200,
+    headers: Object.assign({ 'Content-Type': 'application/json' }, CORS),
   });
 }
