@@ -71,7 +71,6 @@ body {
   min-height: 100vh; line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-/* HEADER */
 .hdr {
   position: sticky; top: 0; z-index: 200;
   display: flex; align-items: center; justify-content: space-between;
@@ -98,9 +97,7 @@ body {
 }
 .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
 .icon-btn:active { transform: scale(.9); }
-/* LAYOUT */
 .wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 16px; }
-/* SEARCH CARD */
 .search-card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r); padding: 18px; box-shadow: var(--shadow);
@@ -115,7 +112,6 @@ body {
 }
 .ip-input::placeholder { color: var(--dim); }
 .ip-input:focus { border-color: var(--accent); }
-/* API KEY SECTION */
 .api-section {
   background: var(--card); border: 1px solid var(--border);
   border-radius: var(--r-sm); padding: 12px 14px;
@@ -133,7 +129,6 @@ body {
 .api-hint { font-size: .72rem; color: var(--muted); }
 .api-hint a { color: var(--accent); text-decoration: none; }
 .api-hint a:hover { text-decoration: underline; }
-/* ACTIONS */
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
@@ -155,27 +150,21 @@ body {
   transition: all .15s; white-space: nowrap;
 }
 .btn-sm:hover { color: var(--text); border-color: var(--border2); }
-/* SPINNER */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; animation: spin .7s linear infinite; }
-/* ALERT */
 .alert { padding: 12px 15px; border-radius: var(--r-sm); font-size: .88rem; border: 1.5px solid; background: var(--err-dim); border-color: var(--err); color: var(--err); }
-/* PROGRESS */
 .progress-bar-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 50px; overflow: hidden; height: 5px; }
 .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), #8b5cf6); transition: width .3s ease; width: 0%; }
 .progress-label { font-size: .76rem; color: var(--muted); text-align: center; margin-top: 5px; font-family: var(--mono); }
-/* MAP */
 .map-wrap { border-radius: var(--r); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
 #map { height: 240px; background: var(--card); }
 @media (min-width: 600px) { #map { height: 320px; } }
-/* RESULTS */
 .results-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
 .results-lbl { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
 .results-right { display: flex; align-items: center; gap: 8px; }
 .results-badge { background: var(--accent-dim); color: var(--accent); font-size: .7rem; font-weight: 800; padding: 3px 10px; border-radius: 50px; font-family: var(--mono); }
 .grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 @media (min-width: 640px) { .grid { grid-template-columns: repeat(2,1fr); } }
-/* CARDS */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .ip-card {
   background: var(--card); border: 1.5px solid var(--border);
@@ -187,14 +176,12 @@ body {
 .ip-card.err-card { border-color: var(--err); }
 .ip-card.threat-card { border-color: var(--err); }
 .ip-card.warn-card { border-color: var(--warn); }
-/* CARD TOP */
 .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .card-ip-row { display: flex; flex-direction: column; gap: 4px; }
 .card-ip { font-family: var(--mono); font-size: .95rem; font-weight: 600; word-break: break-all; }
 .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .card-flag { font-size: 1.7rem; line-height: 1; }
 .card-actions { display: flex; gap: 5px; }
-/* BADGES */
 .badges { display: flex; flex-wrap: wrap; gap: 5px; }
 .badge {
   display: inline-flex; align-items: center; gap: 3px;
@@ -206,29 +193,22 @@ body {
 .badge-warn { background: var(--warn-dim); color: var(--warn); }
 .badge-proxy { background: var(--proxy-dim); color: var(--proxy); }
 .badge-info { background: var(--accent-dim); color: var(--accent); }
-/* LOCATION */
 .loc-primary { font-size: .95rem; font-weight: 600; }
 .loc-secondary { font-size: .82rem; color: var(--muted); margin-top: 2px; }
-/* DIVIDER */
 .divider { height: 1px; background: var(--border); }
-/* DETAIL GRID */
 .details { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .detail { display: flex; flex-direction: column; gap: 2px; }
 .detail.full { grid-column: 1 / -1; }
 .detail-label { font-size: .62rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 700; }
 .detail-val { font-size: .78rem; color: var(--text); font-family: var(--mono); word-break: break-all; }
 .detail-val.muted { color: var(--muted); }
-/* ABUSE SCORE BAR */
 .abuse-score-wrap { display: flex; flex-direction: column; gap: 4px; }
 .abuse-bar-bg { background: var(--border); border-radius: 50px; height: 5px; overflow: hidden; }
 .abuse-bar-fill { height: 100%; border-radius: 50px; transition: width .5s ease; }
 .abuse-score-row { display: flex; justify-content: space-between; align-items: center; }
 .abuse-score-val { font-family: var(--mono); font-size: .78rem; font-weight: 600; }
-/* THREAT FLAGS ROW */
 .threat-flags { display: flex; flex-wrap: wrap; gap: 5px; }
-/* ERR */
 .err-msg { font-size: .85rem; color: var(--err); }
-/* COPY TOAST */
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
   background: var(--card); border: 1px solid var(--border);
@@ -251,7 +231,6 @@ body {
 </header>
 
 <div class="wrap">
-  <!-- SEARCH -->
   <div class="search-card">
     <div>
       <div class="field-label">IP Addresses &mdash; one per line</div>
@@ -301,7 +280,6 @@ body {
 <script>
 'use strict';
 
-// ---- THEME ----
 const html = document.documentElement;
 const themeBtn = document.getElementById('theme-btn');
 const themeIcon = document.getElementById('theme-icon');
@@ -316,7 +294,6 @@ function setTheme(t) {
 }
 themeBtn.addEventListener('click', () => setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark'));
 
-// ---- MAP ----
 let map = null, tileLayer = null;
 const markers = [];
 
@@ -367,7 +344,6 @@ function updateMap(results) {
   else if (bounds.length > 1) map.fitBounds(bounds, { padding: [30, 30] });
 }
 
-// ---- HELPERS ----
 function countryFlag(code) {
   if (!code || code.length !== 2) return '';
   try { const off = 0x1F1E6 - 65; return String.fromCodePoint(code.toUpperCase().charCodeAt(0) + off, code.toUpperCase().charCodeAt(1) + off); } catch(e) { return ''; }
@@ -378,7 +354,6 @@ function isValidIP(ip) {
   return /^[0-9a-fA-F:]{2,39}$/.test(ip) && ip.includes(':');
 }
 
-// ---- KNOWN HOSTING ASNs ----
 const HOSTING_ASNS = new Set([
   'AS14061','AS16509','AS8075','AS13335','AS20940','AS15169','AS396982',
   'AS14618','AS16276','AS63949','AS24940','AS51167','AS20473','AS9009',
@@ -394,7 +369,6 @@ function isHostingASN(asn) {
   return HOSTING_ASNS.has(parts[0]);
 }
 
-// ---- FETCH GEO (ip-api.com - includes proxy/vpn/tor) ----
 async function fetchGeo(ip) {
   if (!isValidIP(ip)) return { ip, success: false, error: 'Invalid IP address' };
   try {
@@ -403,11 +377,8 @@ async function fetchGeo(ip) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     if (d.status !== 'success') return { ip, success: false, error: d.message || 'Lookup failed' };
-
-    // Parse ASN number from "AS#### Name" format
     const asnMatch = d.as ? d.as.match(/^(AS\d+)/) : null;
     const asnNum = asnMatch ? asnMatch[1] : '';
-
     return {
       ip,
       success: true,
@@ -428,16 +399,13 @@ async function fetchGeo(ip) {
   } catch(e) { return { ip, success: false, error: 'Network error: ' + e.message }; }
 }
 
-// ---- FETCH RDNS ----
 async function fetchRDNS(ip) {
   try {
-    // Use dns.google for PTR lookups
     const isIPv4 = ip.includes('.');
     let query;
     if (isIPv4) {
       query = ip.split('.').reverse().join('.') + '.in-addr.arpa';
     } else {
-      // IPv6 reverse
       const expanded = expandIPv6(ip);
       if (!expanded) return null;
       query = expanded.replace(/:/g,'').split('').reverse().join('.') + '.ip6.arpa';
@@ -454,7 +422,6 @@ async function fetchRDNS(ip) {
 
 function expandIPv6(ip) {
   try {
-    // Simple expansion for common cases
     if (!ip.includes(':')) return null;
     const parts = ip.split('::');
     if (parts.length > 2) return null;
@@ -465,17 +432,11 @@ function expandIPv6(ip) {
   } catch(e) { return null; }
 }
 
-// ---- FETCH ABUSEIPDB ----
 async function fetchAbuse(ip, apiKey) {
   if (!apiKey) return null;
   try {
-    // AbuseIPDB blocks direct browser requests without CORS proxy
-    // Use a CORS-anywhere compatible approach
     const res = await fetch(`https://api.abuseipdb.com/api/v2/check?ipAddress=${encodeURIComponent(ip)}&maxAgeInDays=90`, {
-      headers: {
-        'Key': apiKey,
-        'Accept': 'application/json',
-      }
+      headers: { 'Key': apiKey, 'Accept': 'application/json' }
     });
     if (!res.ok) return null;
     const d = await res.json();
@@ -494,21 +455,12 @@ async function fetchAbuse(ip, apiKey) {
   } catch(e) { return null; }
 }
 
-// ---- COMBINED LOOKUP ----
 async function lookupIP(ip) {
   const abuseKey = document.getElementById('abuse-key').value.trim();
-
-  // Run geo + rdns in parallel, abuse after (optional)
   const [geo, rdns] = await Promise.all([fetchGeo(ip), fetchRDNS(ip)]);
-
   if (!geo.success) return geo;
-
   geo.rdns = rdns;
-
-  // Determine if VPN/Proxy/Tor based on ip-api hosting flag + ASN check
   geo.is_datacenter = geo.is_hosting;
-
-  // Abuse score
   if (abuseKey) {
     const abuse = await fetchAbuse(ip, abuseKey);
     if (abuse) {
@@ -518,11 +470,9 @@ async function lookupIP(ip) {
       geo.abuse_usage = abuse.usage_type;
     }
   }
-
   return geo;
 }
 
-// ---- CARD ----
 function makeCard(r, idx) {
   const d = document.createElement('div');
   let cardClass = 'ip-card';
@@ -541,7 +491,6 @@ function makeCard(r, idx) {
   const primary = r.city || r.region || r.country || 'Unknown';
   const secondary = r.city ? [r.region, r.country].filter(Boolean).join(', ') : (r.region ? r.country : '');
 
-  // Build badge list
   const badges = [];
   if (r.is_proxy) badges.push('<span class="badge badge-proxy">Proxy</span>');
   if (r.is_datacenter) badges.push('<span class="badge badge-warn">Datacenter</span>');
@@ -552,22 +501,11 @@ function makeCard(r, idx) {
   }
   if (!badges.length) badges.push('<span class="badge badge-ok">Clean</span>');
 
-  // Abuse score bar
   let abuseHtml = '';
   if (r.abuse_score != null) {
     const score = r.abuse_score;
     const barColor = score > 50 ? 'var(--err)' : score > 20 ? 'var(--warn)' : 'var(--ok)';
-    abuseHtml = `
-      <div class="detail full">
-        <div class="detail-label">Abuse Confidence Score</div>
-        <div class="abuse-score-wrap">
-          <div class="abuse-score-row">
-            <span class="abuse-score-val" style="color:${barColor}">${score}%</span>
-            <span class="detail-val muted">${r.abuse_reports || 0} report${r.abuse_reports !== 1 ? 's' : ''}</span>
-          </div>
-          <div class="abuse-bar-bg"><div class="abuse-bar-fill" style="width:${score}%;background:${barColor}"></div></div>
-        </div>
-      </div>`;
+    abuseHtml = `<div class="detail full"><div class="detail-label">Abuse Confidence Score</div><div class="abuse-score-wrap"><div class="abuse-score-row"><span class="abuse-score-val" style="color:${barColor}">${score}%</span><span class="detail-val muted">${r.abuse_reports || 0} report${r.abuse_reports !== 1 ? 's' : ''}</span></div><div class="abuse-bar-bg"><div class="abuse-bar-fill" style="width:${score}%;background:${barColor}"></div></div></div></div>`;
   }
 
   d.innerHTML = `
@@ -578,9 +516,7 @@ function makeCard(r, idx) {
       </div>
       <div class="card-right">
         ${flag ? `<div class="card-flag">${flag}</div>` : ''}
-        <div class="card-actions">
-          <button class="btn-sm copy-btn" title="Copy to clipboard">Copy</button>
-        </div>
+        <div class="card-actions"><button class="btn-sm copy-btn" title="Copy to clipboard">Copy</button></div>
       </div>
     </div>
     <div>
@@ -616,7 +552,6 @@ function copyCard(r) {
   navigator.clipboard.writeText(lines.join('\n')).then(() => showToast('Copied to clipboard'));
 }
 
-// ---- TOAST ----
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -624,7 +559,6 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2000);
 }
 
-// ---- EXPORT CSV ----
 let allResults = [];
 
 function exportCSV() {
@@ -649,7 +583,6 @@ function exportCSV() {
   a.click(); URL.revokeObjectURL(url);
 }
 
-// ---- MAIN LOOKUP ----
 const lookupBtn = document.getElementById('lookup-btn');
 const lookupLbl = document.getElementById('lookup-lbl');
 const myipBtn = document.getElementById('myip-btn');
@@ -683,29 +616,23 @@ async function doLookup(ips) {
   setLoading(true); hideAlert();
   grid.innerHTML = ''; resultsSection.style.display = 'none'; mapWrap.style.display = 'none';
   allResults = [];
-
   if (ips.length > 1) { progressWrap.style.display = 'block'; setProgress(0, ips.length); }
-
   try {
     let done = 0;
-    const CHUNK = 3; // smaller chunk due to more API calls per IP
-
+    const CHUNK = 3;
     for (let i = 0; i < ips.length; i += CHUNK) {
       const chunk = ips.slice(i, i + CHUNK);
       const chunkResults = await Promise.all(chunk.map(lookupIP));
       chunkResults.forEach(r => {
-        allResults.push(r);
-        done++;
+        allResults.push(r); done++;
         setProgress(done, ips.length);
         grid.appendChild(makeCard(r, allResults.length - 1));
       });
       resultsSection.style.display = 'block';
     }
-
     progressWrap.style.display = 'none';
     const ok = allResults.filter(r => r.success).length;
     badge.textContent = `${ok} / ${allResults.length}`;
-
     const hasCoords = allResults.some(r => r.success && r.latitude && r.longitude);
     if (hasCoords) {
       mapWrap.style.display = 'block';
@@ -765,7 +692,6 @@ document.getElementById('clear-btn').addEventListener('click', () => {
   hideAlert();
 });
 
-// ---- API KEY PERSISTENCE ----
 const abuseKeyInput = document.getElementById('abuse-key');
 const saveKeyBtn = document.getElementById('save-key-btn');
 const clearKeyBtn = document.getElementById('clear-key-btn');
@@ -800,17 +726,13 @@ clearKeyBtn.addEventListener('click', () => {
   showToast('Key cleared');
 });
 
-// Show save button again if user types in the field after a key is saved
 abuseKeyInput.addEventListener('input', () => {
   const stored = localStorage.getItem('abuseipdb_key');
-  if (abuseKeyInput.value.trim() !== stored) {
-    saveKeyBtn.style.display = '';
-  }
+  if (abuseKeyInput.value.trim() !== stored) saveKeyBtn.style.display = '';
 });
 
 loadSavedKey();
 
-// ---- INIT THEME ----
 const saved = localStorage.getItem('theme') || 'dark';
 html.dataset.theme = saved;
 themeIcon.textContent = saved === 'dark' ? '☀️' : '🌙';
