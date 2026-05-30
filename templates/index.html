@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#070d1a" id="theme-color-meta">
+  <title>IP Geolocate</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #070d1a;
+      --surface:     #0e1828;
+      --card:        #111f35;
+      --border:      #1d3151;
+      --accent:      #3b82f6;
+      --accent-h:    #2563eb;
+      --accent-dim:  rgba(59,130,246,.15);
+      --ok:          #10b981;
+      --ok-dim:      rgba(16,185,129,.12);
+      --err:         #ef4444;
+      --err-dim:     rgba(239,68,68,.12);
+      --text:        #e2e8f0;
+      --muted:       #6b85a3;
+      --dim:         #3d5578;
+      --shadow:      0 4px 24px rgba(0,0,0,.4);
+      --shadow-sm:   0 2px 8px rgba(0,0,0,.3);
+      --r:           16px;
+      --r-sm:        10px;
+      --mono:        'SF Mono','Cascadia Code','Fira Code',Consolas,Monaco,monospace;
+    }
+
+    [data-theme="light"] {
+      --bg:         #f0f4f8;
+      --surface:    #ffffff;
+      --card:       #ffffff;
+      --border:     #dde4ef;
+      --accent:     #2563eb;
+      --accent-h:   #1d4ed8;
+      --accent-dim: rgba(37,99,235,.10);
+      --ok:         #059669;
+      --ok-dim:     rgba(5,150,105,.10);
+      --err:        #dc2626;
+      --err-dim:    rgba(220,38,38,.08);
+      --text:       #1a202c;
+      --muted:      #4a5568;
+      --dim:        #a0aec0;
+      --shadow:     0 4px 24px rgba(0,0,0,.08);
+      --shadow-sm:  0 2px 8px rgba(0,0,0,.06);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ── */
+    .hdr {
+      position: sticky; top: 0; z-index: 200;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px;
+      background: rgba(7,13,26,.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    [data-theme="light"] .hdr { background: rgba(255,255,255,.88); }
+
+    .hdr-title {
+      font-size: 1.1rem; font-weight: 800; letter-spacing: -.03em;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .theme-btn {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 1px solid var(--border); background: var(--card);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; transition: transform .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .theme-btn:active { transform: scale(.9); }
+
+    /* ── Layout ── */
+    .wrap {
+      max-width: 900px; margin: 0 auto;
+      padding: 20px 16px;
+      display: flex; flex-direction: column; gap: 18px;
+    }
+
+    /* ── Search card ── */
+    .search-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 20px; box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: 14px;
+    }
+
+    .field-label {
+      font-size: .75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--muted);
+    }
+
+    .ip-input {
+      width: 100%; min-height: 96px; max-height: 220px;
+      padding: 12px 14px; resize: vertical;
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: var(--r-sm); color: var(--text);
+      font-family: var(--mono); font-size: .95rem; line-height: 1.7;
+      outline: none; transition: border-color .2s;
+    }
+    .ip-input::placeholder { color: var(--dim); }
+    .ip-input:focus { border-color: var(--accent); }
+
+    .actions { display: flex; gap: 10px; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 13px 22px; border-radius: 50px; border: none;
+      font-size: .95rem; font-weight: 700; cursor: pointer;
+      transition: all .2s; white-space: nowrap; user-select: none;
+      -webkit-tap-highlight-color: transparent; min-height: 48px;
+    }
+    .btn:active { transform: scale(.95); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    .btn-primary { flex: 1; background: var(--accent); color: #fff; }
+    .btn-primary:not(:disabled):hover { background: var(--accent-h); }
+
+    .btn-ghost {
+      background: var(--card); color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+    .btn-ghost:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+      border: 2.5px solid rgba(255,255,255,.3); border-top-color: #fff;
+      animation: spin .7s linear infinite;
+    }
+
+    /* ── Alert ── */
+    .alert {
+      padding: 14px 16px; border-radius: var(--r-sm);
+      font-size: .9rem; border: 1.5px solid;
+      background: var(--err-dim); border-color: var(--err); color: var(--err);
+    }
+
+    /* ── Map ── */
+    .map-wrap {
+      border-radius: var(--r); overflow: hidden;
+      border: 1px solid var(--border); box-shadow: var(--shadow);
+    }
+    #map { height: 260px; background: var(--card); }
+    @media (min-width: 600px) { #map { height: 340px; } }
+
+    /* ── Results ── */
+    .results-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .results-lbl {
+      font-size: .75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--muted);
+    }
+    .results-badge {
+      background: var(--accent-dim); color: var(--accent);
+      font-size: .72rem; font-weight: 800;
+      padding: 3px 11px; border-radius: 50px;
+    }
+
+    .grid {
+      display: grid; grid-template-columns: 1fr; gap: 12px;
+    }
+    @media (min-width: 600px) { .grid { grid-template-columns: repeat(2,1fr); } }
+
+    /* ── IP card ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .ip-card {
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: var(--r); padding: 18px;
+      display: flex; flex-direction: column; gap: 12px;
+      box-shadow: var(--shadow-sm);
+      animation: fadeUp .3s ease both;
+    }
+    .ip-card.err-card {
+      border-color: var(--err);
+      background: color-mix(in srgb, var(--card) 95%, var(--err));
+    }
+
+    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .card-ip { font-family: var(--mono); font-size: 1rem; font-weight: 600; word-break: break-all; }
+    .card-flag { font-size: 1.9rem; line-height: 1; flex-shrink: 0; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: .7rem; font-weight: 800; padding: 3px 10px;
+      border-radius: 50px; text-transform: uppercase; letter-spacing: .06em;
+      margin-top: 5px;
+    }
+    .badge-ok  { background: var(--ok-dim);  color: var(--ok); }
+    .badge-err { background: var(--err-dim); color: var(--err); }
+
+    .loc-primary   { font-size: 1rem; font-weight: 600; }
+    .loc-secondary { font-size: .85rem; color: var(--muted); margin-top: 2px; }
+
+    .divider { height: 1px; background: var(--border); }
+
+    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .detail-label {
+      font-size: .65rem; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--dim); font-weight: 700; margin-bottom: 2px;
+    }
+    .detail-val {
+      font-size: .8rem; color: var(--muted); font-family: var(--mono); word-break: break-all;
+    }
+    .full { grid-column: 1 / -1; }
+
+    .err-msg { font-size: .875rem; color: var(--err); }
+
+    /* ── Empty ── */
+    .empty {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      padding: 48px 20px; color: var(--muted); text-align: center;
+    }
+    .empty-icon { font-size: 3rem; opacity: .35; }
+  </style>
+</head>
+<body>
+
+<header class="hdr">
+  <span class="hdr-title">IP Geolocate</span>
+  <button class="theme-btn" id="theme-btn" aria-label="Toggle theme">
+    <span id="theme-icon">☀️</span>
+  </button>
+</header>
+
+<div class="wrap">
+
+  <!-- Search -->
+  <div class="search-card">
+    <div class="field-label">IP Addresses &mdash; one per line</div>
+    <textarea
+      id="ip-input"
+      class="ip-input"
+      placeholder="8.8.8.8&#10;1.1.1.1&#10;9.9.9.9"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="none"
+      spellcheck="false"
+    ></textarea>
+    <div class="actions">
+      <button class="btn btn-primary" id="lookup-btn">
+        <span id="lookup-lbl">Locate IPs</span>
+      </button>
+      <button class="btn btn-ghost" id="myip-btn">My IP</button>
+    </div>
+  </div>
+
+  <!-- Alert -->
+  <div id="alert" style="display:none;"></div>
+
+  <!-- Map -->
+  <div class="map-wrap" id="map-wrap" style="display:none;">
+    <div id="map"></div>
+  </div>
+
+  <!-- Results -->
+  <div id="results-section" style="display:none;">
+    <div class="results-hdr">
+      <span class="results-lbl">Results</span>
+      <span class="results-badge" id="results-badge"></span>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+</div><!-- .wrap -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+'use strict';
+
+/* ── Theme ── */
+const html      = document.documentElement;
+const themeBtn  = document.getElementById('theme-btn');
+const themeIcon = document.getElementById('theme-icon');
+const metaColor = document.getElementById('theme-color-meta');
+
+function setTheme(t) {
+  html.dataset.theme = t;
+  themeIcon.textContent = t === 'dark' ? '☀️' : '🌙';
+  metaColor.content = t === 'dark' ? '#070d1a' : '#f0f4f8';
+  localStorage.setItem('theme', t);
+  if (map) swapTiles(t);
+}
+
+themeBtn.addEventListener('click', () =>
+  setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+/* ── Map ── */
+let map = null, tileLayer = null;
+const markers = [];
+
+function tileUrl(t) {
+  return t === 'dark'
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+}
+function tileAttr(t) {
+  return t === 'dark'
+    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com">CARTO</a>'
+    : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+}
+
+function initMap() {
+  if (map) return;
+  map = L.map('map');
+  map.setView([20, 0], 2);
+  const t = html.dataset.theme;
+  tileLayer = L.tileLayer(tileUrl(t), { attribution: tileAttr(t), maxZoom: 18 }).addTo(map);
+}
+
+function swapTiles(t) {
+  if (!map) return;
+  tileLayer.remove();
+  tileLayer = L.tileLayer(tileUrl(t), { attribution: tileAttr(t), maxZoom: 18 }).addTo(map);
+}
+
+function updateMap(results) {
+  initMap();
+  markers.forEach(m => m.remove());
+  markers.length = 0;
+
+  const valid = results.filter(r => r.success && r.latitude && r.longitude);
+  if (!valid.length) return;
+
+  const bounds = [];
+  valid.forEach(r => {
+    const lat = parseFloat(r.latitude), lon = parseFloat(r.longitude);
+    if (isNaN(lat) || isNaN(lon)) return;
+
+    const flag = countryFlag(r.country_code);
+    const place = [r.city, r.region, r.country].filter(Boolean).join(', ');
+    const popup = `<div style="font:13px/1.6 monospace">
+      <strong>${esc(r.ip)}</strong><br>
+      ${flag} ${esc(place)}<br>
+      <span style="color:#888">${esc(r.isp || r.org || '')}</span>
+    </div>`;
+
+    const m = L.circleMarker([lat, lon], {
+      radius: 8, fillColor: '#3b82f6',
+      color: '#fff', weight: 2, opacity: 1, fillOpacity: .9
+    }).bindPopup(popup).addTo(map);
+
+    markers.push(m);
+    bounds.push([lat, lon]);
+  });
+
+  if (bounds.length === 1) map.setView(bounds[0], 8);
+  else if (bounds.length > 1) map.fitBounds(bounds, { padding: [30, 30] });
+}
+
+/* ── Helpers ── */
+function countryFlag(code) {
+  if (!code || code.length !== 2) return '';
+  try {
+    const off = 0x1F1E6 - 65;
+    return String.fromCodePoint(
+      code.toUpperCase().charCodeAt(0) + off,
+      code.toUpperCase().charCodeAt(1) + off
+    );
+  } catch { return ''; }
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Card renderer ── */
+function makeCard(r, idx) {
+  const d = document.createElement('div');
+  d.className = 'ip-card' + (r.success ? '' : ' err-card');
+  d.style.animationDelay = `${idx * 55}ms`;
+
+  if (r.success) {
+    const flag = countryFlag(r.country_code);
+    const primary = r.city || r.region || r.country || '—';
+    const secondary = r.city
+      ? [r.region, r.country].filter(Boolean).join(', ')
+      : r.region ? r.country : '';
+
+    d.innerHTML = `
+      <div class="card-top">
+        <div>
+          <div class="card-ip">${esc(r.ip)}</div>
+          <span class="badge badge-ok">&#10003; Located</span>
+        </div>
+        ${flag ? `<div class="card-flag">${flag}</div>` : ''}
+      </div>
+      <div>
+        <div class="loc-primary">${esc(primary)}</div>
+        ${secondary ? `<div class="loc-secondary">${esc(secondary)}</div>` : ''}
+      </div>
+      <div class="divider"></div>
+      <div class="details">
+        ${r.latitude && r.longitude ? `
+          <div>
+            <div class="detail-label">Coordinates</div>
+            <div class="detail-val">${esc(r.latitude)}, ${esc(r.longitude)}</div>
+          </div>` : ''}
+        ${r.asn ? `
+          <div>
+            <div class="detail-label">ASN</div>
+            <div class="detail-val">${esc(r.asn)}</div>
+          </div>` : ''}
+        ${r.isp ? `
+          <div class="full">
+            <div class="detail-label">ISP</div>
+            <div class="detail-val">${esc(r.isp)}</div>
+          </div>` : ''}
+      </div>`;
+  } else {
+    d.innerHTML = `
+      <div class="card-top">
+        <div>
+          <div class="card-ip">${esc(r.ip)}</div>
+          <span class="badge badge-err">&#10007; Failed</span>
+        </div>
+      </div>
+      <div class="err-msg">${esc(r.error || 'Unknown error')}</div>`;
+  }
+  return d;
+}
+
+/* ── UI refs ── */
+const lookupBtn     = document.getElementById('lookup-btn');
+const lookupLbl     = document.getElementById('lookup-lbl');
+const myipBtn       = document.getElementById('myip-btn');
+const ipInput       = document.getElementById('ip-input');
+const mapWrap       = document.getElementById('map-wrap');
+const resultsSection= document.getElementById('results-section');
+const grid          = document.getElementById('grid');
+const badge         = document.getElementById('results-badge');
+const alertEl       = document.getElementById('alert');
+
+function setLoading(on) {
+  lookupBtn.disabled = myipBtn.disabled = on;
+  lookupLbl.textContent = on ? 'Looking up…' : 'Locate IPs';
+  const s = lookupBtn.querySelector('.spinner');
+  if (on && !s) {
+    const sp = document.createElement('span');
+    sp.className = 'spinner';
+    lookupBtn.prepend(sp);
+  } else if (!on && s) s.remove();
+}
+
+function showAlert(msg) {
+  alertEl.textContent = msg;
+  alertEl.style.display = 'block';
+}
+function hideAlert() { alertEl.style.display = 'none'; }
+
+/* ── Lookup ── */
+async function doLookup(ips) {
+  setLoading(true);
+  hideAlert();
+  try {
+    const res  = await fetch('/api/lookup', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ips})
+    });
+    const data = await res.json();
+
+    if (!res.ok) { showAlert(data.error || 'Lookup failed'); return; }
+
+    const results = data.results || [];
+
+    grid.innerHTML = '';
+    results.forEach((r, i) => grid.appendChild(makeCard(r, i)));
+
+    const ok = results.filter(r => r.success).length;
+    badge.textContent = `${ok} / ${results.length}`;
+    resultsSection.style.display = 'block';
+
+    const hasCoords = results.some(r => r.success && r.latitude && r.longitude);
+    mapWrap.style.display = hasCoords ? 'block' : 'none';
+    if (hasCoords) {
+      updateMap(results);
+      setTimeout(() => map.invalidateSize(), 10);
+    }
+  } catch (e) {
+    showAlert('Network error: ' + e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+lookupBtn.addEventListener('click', () => {
+  const raw = ipInput.value.trim();
+  if (!raw) { showAlert('Enter at least one IP address.'); return; }
+  const ips = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  doLookup(ips);
+});
+
+ipInput.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') lookupBtn.click();
+});
+
+/* ── My IP ── */
+myipBtn.addEventListener('click', async () => {
+  myipBtn.disabled = true;
+  const orig = myipBtn.textContent;
+  myipBtn.textContent = '…';
+  try {
+    let ip = '';
+    try {
+      const r = await fetch('https://api.ipify.org?format=json');
+      ip = (await r.json()).ip || '';
+    } catch {
+      const r = await fetch('/api/myip');
+      ip = (await r.json()).ip || '';
+    }
+    if (ip) { ipInput.value = ip; doLookup([ip]); }
+    else showAlert('Could not detect your IP.');
+  } catch {
+    showAlert('Could not detect your IP.');
+  } finally {
+    myipBtn.disabled = false;
+    myipBtn.textContent = orig;
+  }
+});
+
+/* ── Init ── */
+const saved = localStorage.getItem('theme') || 'dark';
+html.dataset.theme = saved;
+themeIcon.textContent = saved === 'dark' ? '☀️' : '🌙';
+metaColor.content = saved === 'dark' ? '#070d1a' : '#f0f4f8';
+</script>
+</body>
+</html>

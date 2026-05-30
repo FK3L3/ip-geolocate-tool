@@ -50,3 +50,44 @@ python3 ip_geolocate.py --input ips.txt --output results.csv
 - `--timeout 12`: request timeout per IP
 - `--delay 0.5`: delay between requests (useful for rate limits)
 - `--keep-duplicates`: keeps repeated IPs (default behavior deduplicates before lookup)
+
+## Web UI (mobile-friendly)
+
+A browser-based interface lets you look up IPs from any device — including your phone.
+
+### Install
+
+```bash
+pip install flask
+```
+
+### Run
+
+```bash
+python3 app.py
+```
+
+Open `http://localhost:5000` in your browser.
+
+### Use on your phone
+
+Start the server on your computer, then find your machine's local IP address:
+
+```bash
+# macOS / Linux
+hostname -I   # or: ifconfig | grep 'inet '
+```
+
+On your phone (same Wi-Fi network), open:
+
+```
+http://<your-machine-ip>:5000
+```
+
+### Features
+
+- Enter one or more IPs (one per line) and tap **Locate IPs**
+- Tap **My IP** to auto-detect and look up your current public IP
+- Results displayed as cards with country flag, city, ISP, and ASN
+- Interactive map (Leaflet/OpenStreetMap) shows all located IPs
+- Dark / light theme toggle, persisted across sessions
