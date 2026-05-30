@@ -51,43 +51,54 @@ python3 ip_geolocate.py --input ips.txt --output results.csv
 - `--delay 0.5`: delay between requests (useful for rate limits)
 - `--keep-duplicates`: keeps repeated IPs (default behavior deduplicates before lookup)
 
-## Web UI (mobile-friendly)
+## Web UI (use on any phone — no server needed)
 
-A browser-based interface lets you look up IPs from any device — including your phone.
+The easiest way to use this on your phone is via **GitHub Pages** — a free
+hosted URL that works from any browser, anywhere.
 
-### Install
+### Enable GitHub Pages (one-time setup)
 
-```bash
-pip install flask
-```
+1. Go to your repo on GitHub → **Settings** → **Pages**
+2. Under *Build and deployment*, set **Source** to `Deploy from a branch`
+3. Set **Branch** to `main` and **folder** to `/docs`
+4. Click **Save**
 
-### Run
-
-```bash
-python3 app.py
-```
-
-Open `http://localhost:5000` in your browser.
-
-### Use on your phone
-
-Start the server on your computer, then find your machine's local IP address:
-
-```bash
-# macOS / Linux
-hostname -I   # or: ifconfig | grep 'inet '
-```
-
-On your phone (same Wi-Fi network), open:
+GitHub will publish the app at:
 
 ```
-http://<your-machine-ip>:5000
+https://fk3l3.github.io/ip-geolocate-tool/
 ```
+
+Bookmark that URL on your phone. Done — no installs, no server, works anywhere.
+
+### How it works
+
+`docs/index.html` is a fully self-contained page that calls the
+[ipwho.is](https://ipwho.is) geolocation API directly from your browser.
+No Python or Flask required.
 
 ### Features
 
 - Enter one or more IPs (one per line) and tap **Locate IPs**
 - Tap **My IP** to auto-detect and look up your current public IP
-- Results displayed as cards with country flag, city, ISP, and ASN
-- Interactive map (Leaflet/OpenStreetMap) shows all located IPs
+- Results stream in as cards with country flag, city, ISP, and ASN
+- Interactive map (Leaflet / OpenStreetMap) pins all located IPs
 - Dark / light theme toggle, persisted across sessions
+- Works as a local file too — just open `docs/index.html` in any browser
+
+---
+
+## Self-hosted Web UI (optional, requires Python)
+
+If you want to run the web UI on your own server:
+
+```bash
+pip install flask
+python3 app.py
+```
+
+Open `http://localhost:5000` in your browser, or on your phone via:
+
+```
+http://<your-machine-ip>:5000
+```
